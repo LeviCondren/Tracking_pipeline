@@ -1,0 +1,20 @@
+name: exatrkx-cpu
+
+channels:
+    - pytorch
+    - pyg
+    - defaults
+    - conda-forge
+    
+dependencies:
+    - pip
+    - numpy
+    - pandas
+    - scipy
+    - ipython
+    - matplotlib
+    - cpuonly
+    - pytorch=1.12.1
+    - pytorch-lightning=1.9.2
+    - pyg=2.2
+    - faiss-cpu

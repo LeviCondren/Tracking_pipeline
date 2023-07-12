@@ -1,0 +1,60 @@
+# Project information
+site_name: Tracking ML with Exa.trkX
+site_url: https://hsf-reco-and-software-triggers.github.io/Tracking-ML-Exa.TrkX/
+site_author: Daniel Murnane on behalf of Exa.TrkX Collaboration
+
+# Repo
+repo_url: https://github.com/HSF-reco-and-software-triggers/Tracking-ML-Exa.TrkX
+repo_name: Tracking ML ExatrkX
+
+nav:
+  - Home: index.md
+  - Pipelines:
+    - Overview: pipelines/overview.md
+    - Quickstart: pipelines/quickstart.md
+    # - Choosing a template: pipelines/choosingguide.md
+    # - "Use Case: TrackML GNN Edge Classification": pipelines/trackmlGNN.md
+    # - "Use Case: TrackML Metric Learning": pipelines/trackmlembedding.md
+  - Models:
+    - Overview: models/overview.md
+    # - Hyperparameter Guide: models/hpguide.md
+    # - Typical Mileage: models/performance.md
+    # - Zoology and Taxonomy: models/taxonomy.md
+  - Performance:
+    - Overview: performance/overview.md
+    - Truth Definitions: performance/truth_definitions.md
+    - Track Matching Definitions: performance/matching_definitions.md
+    # - Use Cases: performance/usage.md
+  - Tools:
+    - Overview: tools/overview.md
+    # - Data Manipulation: tools/data.md
+    # - Training & Inference: tools/ml.md
+    # - PyLightning & MLFlow: tools/frameworks.md
+
+
+theme:
+  name: material
+  palette:
+    primary: white
+    accent: indigo
+  # logo: media/favicon.png
+  # favicon: media/favicon.ico
+  features:
+    - navigation.tabs
+    - navigation.instant
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers: 
+          python:
+              setup_commands:
+                  - import sys
+                  - sys.path.append(".")
+  
+      # watch:
+      #     - Pipelines/TrackML_Example/LightningModules
+      # handlers: 
+      #     python:
+      #         selection:
+      #             docstring_style: google

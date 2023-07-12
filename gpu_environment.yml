@@ -1,0 +1,24 @@
+name: exatrkx-gpu
+
+channels:
+    - rapidsai
+    - nvidia
+    - pytorch
+    - pyg
+    - conda-forge
+
+dependencies:
+    - python=3.9
+    - pip
+    - numpy<=1.22
+    - pandas
+    - scipy
+    - ipython
+    - matplotlib
+    - cudf=22.08
+    - cugraph=22.08
+    - cudatoolkit=11.6
+    - pytorch=1.12.1
+    - pytorch-lightning=1.9.2
+    - pyg=2.2
+    - faiss-gpu

@@ -1,0 +1,9 @@
+  executable              = /afs/cern.ch/user/q/qsha/track/Examples/condor/subscripts/run_example.sh
+  priority                = 100
+  universe                = vanilla
+  output                  = /afs/cern.ch/user/q/qsha/track/Examples/condor/Logfiles/run_example.out
+  error                   = /afs/cern.ch/user/q/qsha/track/Examples/condor/Logfiles/run_example.err
+  log                     = /afs/cern.ch/user/q/qsha/track/Examples/condor/Logfiles/run_example.log
+  +JobFlavour = "nextweek"
+  request_GPUs            = 4
+  queue
