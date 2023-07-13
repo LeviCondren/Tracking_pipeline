@@ -8,42 +8,15 @@ Todo:
 
 # System
 import os
-import argparse
 import logging
-import multiprocessing as mp
-from functools import partial
 
 # Externals
-import yaml
 import numpy as np
 import pandas as pd
-import trackml.dataset
 
 import torch
 from torch_geometric.data import Data
-
-from itertools import permutations
 import itertools
-
-# Locals
-from .cell_utils import get_one_event
-
-
-def get_cell_information(
-    data, cell_features, detector_orig, detector_proc, endcaps, noise
-):
-
-    event_file = data.event_file
-    angles = get_one_event(event_file, detector_orig, detector_proc)
-    logging.info("Angles: {}".format(angles))
-    hid = pd.DataFrame(data.hid.numpy(), columns=["hit_id"])
-    cell_data = torch.from_numpy(
-        (hid.merge(angles, on="hit_id")[cell_features]).to_numpy()
-    ).float()
-    logging.info("DF merged")
-    data.cell_data = cell_data
-
-    return data
 
 
 def get_layerwise_edges(hits):
@@ -111,84 +84,22 @@ def get_modulewise_edges(hits):
     return true_edges
 
 
-def select_hits(hits, truth, particles, endcaps=False, noise=False, min_pt=None):
+def select_hits(truth, particles, endcaps=False, noise=False, min_pt=None):
     # Barrel volume and layer ids
-    if endcaps:
-        vlids = [
-            (7, 2),
-            (7, 4),
-            (7, 6),
-            (7, 8),
-            (7, 10),
-            (7, 12),
-            (7, 14),
-            (8, 2),
-            (8, 4),
-            (8, 6),
-            (8, 8),
-            (9, 2),
-            (9, 4),
-            (9, 6),
-            (9, 8),
-            (9, 10),
-            (9, 12),
-            (9, 14),
-            (12, 2),
-            (12, 4),
-            (12, 6),
-            (12, 8),
-            (12, 10),
-            (12, 12),
-            (13, 2),
-            (13, 4),
-            (13, 6),
-            (13, 8),
-            (14, 2),
-            (14, 4),
-            (14, 6),
-            (14, 8),
-            (14, 10),
-            (14, 12),
-            (16, 2),
-            (16, 4),
-            (16, 6),
-            (16, 8),
-            (16, 10),
-            (16, 12),
-            (17, 2),
-            (17, 4),
-            (18, 2),
-            (18, 4),
-            (18, 6),
-            (18, 8),
-            (18, 10),
-            (18, 12),
-        ]
-    else:
-        vlids = [
-        #    (8, 2),
-        #    (8, 4),
-        #    (8, 6),
-        #    (8, 8),
-        #    (13, 2),
-        #    (13, 4),
-        #    (13, 6),
-        #    (13, 8),
-        #    (17, 2),
-        #    (17, 4),
-            (1),
-            (2),
-            (3),
-            (4),
-            (5),
-            (6),
-            (7),
-            (8),
-        ]
+    vlids = [
+        (1),
+        (2),
+        (3),
+        (4),
+        (5),
+        (6),
+        (7),
+        (8),
+    ]
     n_det_layers = len(vlids)
     # Select barrel layers and assign convenient layer number [0-9]
-    vlid_groups = hits.groupby(["layer_id"])
-    hits = pd.concat(
+    vlid_groups = truth.groupby(["layer_id"])
+    truth = pd.concat(
         [vlid_groups.get_group(vlids[i]).assign(layer=i) for i in range(n_det_layers)]
     )
 
@@ -207,15 +118,15 @@ def select_hits(hits, truth, particles, endcaps=False, noise=False, min_pt=None)
         truth = truth[truth.pt > min_pt]
 
     # Calculate derived hits variables
-    x = hits.r*np.sin(hits.phi)
-    y = hits.r*np.cos(hits.phi)
-    z = hits.z
+    x = truth.r*np.sin(truth.phi)
+    y = truth.r*np.cos(truth.phi)
+    z = truth.z
     #r = np.sqrt(hits.x**2 + hits.y**2)
     #phi = np.arctan2(hits.y, hits.x)
     # Select the data columns we need
-    hits = hits.assign(x=x, y=y).merge(truth, on="hit_id")
+    truth = truth.assign(x=x, y=y)
 
-    return hits
+    return truth
 
 
 def build_event(
@@ -226,31 +137,20 @@ def build_event(
     layerwise=True,
     noise=False,
     min_pt=None,
-    #detector=None,
 ):
-    # Get true edge list using the ordering by R' = distance from production vertex of each particle
-    hits, particles, truth = trackml.dataset.load_event(
-        event_file, parts=["hits", "particles", "truth"]
-    )
-    hits = select_hits(hits, truth, particles, endcaps=endcaps, noise=noise, min_pt=min_pt).assign(
+    hits_file = event_file + "_hits.csv"
+    particles_file = event_file + "_particles.csv"
+    truth, particles = pd.read_csv(hits_file), pd.read_csv(particles_file)
+
+    truth = select_hits(truth, particles, endcaps=endcaps, noise=noise, min_pt=min_pt).assign(
         evtid=int(event_file[-9:])
     )
-    
-    # Make a unique module ID and attach to hits
-   # if detector is not None:
-   #     module_lookup = detector.reset_index()[["index", "volume_id", "layer_id", "module_id"]].rename(columns={"index": "module_index"})
-   #     hits = hits.merge(module_lookup, on=["volume_id", "layer_id", "module_id"], how="left")
-   #     module_id = hits.module_index.to_numpy()
-   # else:
-   #     module_id = None
-
-    layer_id = hits.layer.to_numpy()
 
     # Handle which truth graph(s) are being produced
     modulewise_true_edges, layerwise_true_edges = None, None
 
     if layerwise:
-        layerwise_true_edges, hits = get_layerwise_edges(hits)
+        layerwise_true_edges, hits = get_layerwise_edges(truth)
         logging.info(
             "Layerwise truth graph built for {} with size {}".format(
                 event_file, layerwise_true_edges.shape
@@ -258,33 +158,22 @@ def build_event(
         )
 
     if modulewise:
-        modulewise_true_edges = get_modulewise_edges(hits)
+        modulewise_true_edges = get_modulewise_edges(truth)
         logging.info(
             "Modulewise truth graph built for {} with size {}".format(
                 event_file, modulewise_true_edges.shape
             )
         )
 
-    #edge_weights = (
-    #    hits.weight.to_numpy()[modulewise_true_edges]
-    #    if modulewise
-    #    else hits.weight.to_numpy()[layerwise_true_edges]
-    #)
-    #edge_weight_average = (edge_weights[0] + edge_weights[1]) / 2
-    #edge_weight_norm = edge_weight_average / edge_weight_average.mean()
-
     logging.info("Weights constructed")
 
     return (
-        hits[["r", "phi", "z"]].to_numpy() / feature_scale,
-        hits.particle_id.to_numpy(),
-        #module_id,
+        truth[["r", "phi", "z"]].to_numpy() / feature_scale,
+        truth.particle_id.to_numpy(),
         modulewise_true_edges,
         layerwise_true_edges,
-        hits["hit_id"].to_numpy(),
-        hits.pt.to_numpy(),
-        #hits.weight.to_numpy(),
-        #edge_weight_norm,
+        truth["hit_id"].to_numpy(),
+        truth.pt.to_numpy(),
     )
 
 
@@ -300,9 +189,6 @@ def prepare_event(
     overwrite=False,
     **kwargs
 ):
-    # detector_orig,
-    # detector_proc,
-    # cell_features,
     try:
         evtid = int(event_file[-9:])
         filename = os.path.join(output_dir, str(evtid))
@@ -317,13 +203,10 @@ def prepare_event(
             (
                 X,
                 pid,
-                #module_id,
                 modulewise_true_edges,
                 layerwise_true_edges,
                 hid,
                 pt,
-                #hit_weights,
-                #edge_weights
             ) = build_event(
                 event_file,
                 feature_scale,
@@ -332,7 +215,6 @@ def prepare_event(
                 layerwise=layerwise,
                 noise=noise,
                 min_pt=min_pt,
-                #detector=detector_orig
             )
             print("event_file:")
             print(event_file)
@@ -341,12 +223,9 @@ def prepare_event(
             data = Data(
                 x=torch.from_numpy(X).float(),
                 pid=torch.from_numpy(pid),
-                #modules=torch.from_numpy(module_id),
                 event_file=event_file,
                 hid=torch.from_numpy(hid),
                 pt=torch.from_numpy(pt),
-                #hit_weights=torch.from_numpy(hit_weights),
-                #edge_weights=torch.from_numpy(edge_weights),
             )
             print(data)
             if modulewise_true_edges is not None:
@@ -355,10 +234,6 @@ def prepare_event(
                 data.layerwise_true_edges = torch.from_numpy(layerwise_true_edges)
             logging.info("Getting cell info")
 
-            #if cell_information:
-            #    data = get_cell_information(
-            #        data, cell_features, detector_orig, detector_proc, endcaps, noise
-            #    )
 
             with open(filename, "wb") as pickle_file:
                 torch.save(data, pickle_file)
