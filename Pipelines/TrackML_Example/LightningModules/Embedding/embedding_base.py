@@ -82,7 +82,6 @@ class EmbeddingBase(LightningModule):
         return optimizer, scheduler
 
     def get_input_data(self, batch):
-
         if self.hparams["cell_channels"] > 0:
             input_data = torch.cat(
                 [batch.cell_data[:, : self.hparams["cell_channels"]], batch.x], axis=-1

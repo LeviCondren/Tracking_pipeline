@@ -138,8 +138,8 @@ def build_event(
     noise=False,
     min_pt=None,
 ):
-    hits_file = event_file + "_hits.csv"
-    particles_file = event_file + "_particles.csv"
+    hits_file = event_file + "-hits.csv"
+    particles_file = event_file + "-particles.csv"
     truth, particles = pd.read_csv(hits_file), pd.read_csv(particles_file)
 
     truth = select_hits(truth, particles, endcaps=endcaps, noise=noise, min_pt=min_pt).assign(
@@ -184,7 +184,7 @@ def prepare_event(
     modulewise=True,
     layerwise=True,
     noise=False,
-    min_pt=1,
+    min_pt=0.,
     cell_information=False,
     overwrite=False,
     **kwargs
@@ -192,10 +192,10 @@ def prepare_event(
     try:
         evtid = int(event_file[-9:])
         filename = os.path.join(output_dir, str(evtid))
-        print("evtid&filename:")
-        print(evtid)
-        print(filename)
-        print("---")
+        #print("evtid&filename:")
+        #print(evtid)
+        #print(filename)
+        #print("---")
         if not os.path.exists(filename) or overwrite:
             logging.info("Preparing event {}".format(evtid))
             feature_scale = [1000, np.pi, 1000]
@@ -216,10 +216,10 @@ def prepare_event(
                 noise=noise,
                 min_pt=min_pt,
             )
-            print("event_file:")
-            print(event_file)
-            print("pid:")
-            print(pid)
+            #print("event_file:")
+            #print(event_file)
+            #print("pid:")
+            #print(pid)
             data = Data(
                 x=torch.from_numpy(X).float(),
                 pid=torch.from_numpy(pid),

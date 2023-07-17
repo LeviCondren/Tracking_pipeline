@@ -79,21 +79,20 @@ class QuirkFeatureStore(FeatureStoreBase):
            # cell_features=cell_features,
             **self.hparams
         )
-        print(process_func)
-        print(self.n_files) 
-        print("all_events:")
-        print(all_events) 
-        print("all_files:")
-        print(all_files) 
+        #print(process_func)
+        #print(self.n_files) 
+        #print("all_events:")
+        #print(all_events) 
+        #print("all_files:")
+        #print(all_files) 
         process_map(process_func, all_events)
-        print("try4")
         #process_map(process_func, all_events, max_workers=self.n_workers)
 
 def main():
     hparams = {
-        "input_dir": "test_dataset/test",
-        "output_dir": "test_dataset/feature_store/quickstart_example_1GeV",
-        "n_files": "1",
+        "input_dir": "datasets/Quirk",
+        "output_dir": "datasets/feature_store/quickstart_example_1GeV",
+        "n_files": "102",
         "n_tasks": "1",
         #"n_workers": "0",
         # Other hparams if needed
