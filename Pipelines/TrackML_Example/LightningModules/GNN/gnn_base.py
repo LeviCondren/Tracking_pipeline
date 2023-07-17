@@ -149,7 +149,30 @@ class GNNBase(LightningModule):
         eff = edge_true_positive.clone().detach() / max(1, edge_true)
         pur = edge_true_positive.clone().detach() / max(1, edge_positive)
 
-        auc = roc_auc_score(truth.bool().cpu().detach(), score.cpu().detach())
+        try:
+            auc = roc_auc_score(truth.bool().cpu().detach(), score.cpu().detach())
+            current_lr = self.optimizers().param_groups[0]["lr"]
+            self.log_dict(
+                {
+                    "val_loss": loss,
+                    "auc": auc,
+                    "eff": eff,
+                    "pur": pur,
+                    "current_lr": current_lr,
+                }, on_epoch=True, on_step=False, batch_size=1
+            )
+        except ValueError:
+            current_lr = self.optimizers().param_groups[0]["lr"]
+            self.log_dict(
+                {
+                    "val_loss": loss,
+                    "eff": eff,
+                    "pur": pur,
+                    "current_lr": current_lr,
+                }, on_epoch=True, on_step=False, batch_size=1
+            )
+            #auc = roc_auc_score(truth.bool().cpu().detach(), score.cpu().detach())
+        
 
         current_lr = self.optimizers().param_groups[0]["lr"]
         self.log_dict(
