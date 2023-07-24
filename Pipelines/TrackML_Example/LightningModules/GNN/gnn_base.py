@@ -47,17 +47,17 @@ class GNNBase(LightningModule):
         if ("trainset" not in self.__dict__.keys()) or (self.trainset is None):
             self.setup_data()
 
-        return DataLoader(self.trainset, batch_size=1, num_workers=0)
+        return DataLoader(self.trainset, batch_size=1, num_workers=16)
 
     def val_dataloader(self):
         if self.valset is not None:
-            return DataLoader(self.valset, batch_size=1, num_workers=0)
+            return DataLoader(self.valset, batch_size=1, num_workers=16)
         else:
             return None
 
     def test_dataloader(self):
         if self.testset is not None:
-            return DataLoader(self.testset, batch_size=1, num_workers=0)
+            return DataLoader(self.testset, batch_size=1, num_workers=16)
         else:
             return None
 
@@ -148,7 +148,7 @@ class GNNBase(LightningModule):
 
         eff = edge_true_positive.clone().detach() / max(1, edge_true)
         pur = edge_true_positive.clone().detach() / max(1, edge_positive)
-
+        #auc = roc_auc_score(truth.bool().cpu().detach(), score.cpu().detach()) 
         try:
             auc = roc_auc_score(truth.bool().cpu().detach(), score.cpu().detach())
             current_lr = self.optimizers().param_groups[0]["lr"]
@@ -174,16 +174,16 @@ class GNNBase(LightningModule):
             #auc = roc_auc_score(truth.bool().cpu().detach(), score.cpu().detach())
         
 
-        current_lr = self.optimizers().param_groups[0]["lr"]
-        self.log_dict(
-            {
-                "val_loss": loss,
-                "auc": auc,
-                "eff": eff,
-                "pur": pur,
-                "current_lr": current_lr,
-            }, on_epoch=True, on_step=False, batch_size=1
-        )
+        #current_lr = self.optimizers().param_groups[0]["lr"]
+        #self.log_dict(
+        #    {
+        #        "val_loss": loss,
+        #        "auc": auc,
+        #        "eff": eff,
+        #        "pur": pur,
+        #        "current_lr": current_lr,
+        #    }, on_epoch=True, on_step=False, batch_size=1
+        #)
 
     def shared_evaluation(self, batch, batch_idx, log=False):
 

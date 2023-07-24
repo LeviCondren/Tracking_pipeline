@@ -28,11 +28,11 @@ class InteractionGNN(GNNBase):
 
         # Setup input network
         self.node_encoder = make_mlp(
-            hparams["spatial_channels"] + hparams["cell_channels"],
-            [hparams["hidden"]] * hparams["nb_node_layer"],
+            hparams["spatial_channels"] + hparams["cell_channels"],  #3 + 0
+            [hparams["hidden"]] * hparams["nb_node_layer"],   #128 * 6
             output_activation=None,
-            hidden_activation=hparams["hidden_activation"],
-            layer_norm=hparams["layernorm"],
+            hidden_activation=hparams["hidden_activation"],  #SiLu
+            layer_norm=hparams["layernorm"],    #True
         )
 
         # The edge network computes new edge features from connected nodes

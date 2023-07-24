@@ -86,11 +86,13 @@ def plot_training_metrics(metrics):
 
 def plot_neighbor_performance(model):
 
-    all_radius = np.arange(0.001, 0.15, 0.005)
+    all_radius = np.arange(0.01, 0.3, 0.005)
+    #all_radius = np.arange(0.001, 0.15, 0.005)
     results = { 'eff': [], 'pur': [], 'loss': [], 'radius': all_radius }
     model.to(device)
     test_data = model.testset[0].to(device)
-
+    print(device)
+    print(test_data)
     with torch.no_grad():
         for r in all_radius:
             test_results = model.shared_evaluation(
@@ -100,7 +102,6 @@ def plot_neighbor_performance(model):
                 if key not in test_results: continue
                 results[key].append( test_results[key].cpu().numpy() )
     results = pd.DataFrame(results)
-
     source = ColumnDataSource(results)
     cmap = viridis(3)
     titles = ['Efficiency', 'Purity', 'Loss'] 
@@ -142,17 +143,21 @@ def plot_true_graph(sample_data, num_tracks=100):
         
     show(p)
 
-def plot_predicted_graph(model):
+def plot_predicted_graph(model, radius = 0.1):
 
     # from matplotlib import pyplot as plt
     test_data = model.testset[0].to(device)
-    test_results = model.to(device).shared_evaluation(test_data.to(device), 0, model.hparams["r_test"], 1000, log=False)
+    print(test_data)
+    test_results = model.to(device).shared_evaluation(test_data.to(device), 0, radius, 1000, log=False)
+    #test_results = model.to(device).shared_evaluation(test_data.to(device), 0, model.hparams["r_test"], 1000, log=False)
 
     p = figure(title='Truth graphs', x_axis_label='x', y_axis_label='y', height=500, width=500) 
     q = figure(title='Predicted graphs', x_axis_label='x', y_axis_label='y', height=500, width=500) 
 
     true_edges = test_results['truth_graph']
     true_unique, true_lengths = test_data.pid[true_edges[0]].unique(return_counts=True)
+    print(true_lengths)
+    print(true_unique[true_lengths >= 10])
     pred_edges = test_results['preds']
     pid = test_data.pid
     r, phi, z = test_data.cpu().x.T

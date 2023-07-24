@@ -198,7 +198,7 @@ def prepare_event(
         #print("---")
         if not os.path.exists(filename) or overwrite:
             logging.info("Preparing event {}".format(evtid))
-            feature_scale = [1000, np.pi, 1000]
+            feature_scale = [50, np.pi, 100]  #r(cm),z(cm)
 
             (
                 X,

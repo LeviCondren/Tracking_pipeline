@@ -91,7 +91,7 @@ class QuirkFeatureStore(FeatureStoreBase):
 def main():
     hparams = {
         "input_dir": "datasets/Quirk",
-        "output_dir": "datasets/feature_store/quickstart_example_1GeV",
+        "output_dir": "datasets/feature_store/QuirkTracking_sample",
         "n_files": "102",
         "n_tasks": "1",
         #"n_workers": "0",
