@@ -1,137 +1,3 @@
-#    def log_metrics(self, score, preds, truth, batch, loss):
-#
-#        edge_positive = preds.sum().float()
-#        edge_true = truth.sum().float()
-#        edge_true_positive = (
-#            (truth.bool() & preds).sum().float()
-#        )
-#
-#        eff = edge_true_positive.clone().detach() / max(1, edge_true)
-#
-#        pur = edge_true_positive.clone().detach() / max(1, edge_positive)
-#        #auc = roc_auc_score(truth.bool().cpu().detach(), score.cpu().detach()) 
-#        try:
-#            auc = roc_auc_score(truth.bool().cpu().detach(), score.cpu().detach())
-#            current_lr = self.optimizers().param_groups[0]["lr"]
-#            self.log_dict(
-#                {
-#                    "val_loss": loss,
-#                    "auc": auc,
-#                    "eff": eff,
-#                    "pur": pur,
-#                    "current_lr": current_lr,
-#                    #"edge_true_positive": edge_true_positive,
-#                    #"edge_true": edge_true,
-#                    #"edge_positive": edge_positive,
-#                }, on_epoch=True, on_step=False, batch_size=1
-#            )
-#        except ValueError:
-#            current_lr = self.optimizers().param_groups[0]["lr"]
-#            self.log_dict(
-#                {
-#                    "val_loss": loss,
-#                    "eff": eff,
-#                    "pur": pur,
-#                    "current_lr": current_lr,
-#                    #"edge_true_positive": edge_true_positive,
-#                    #"edge_true": edge_true,
-#                    #"edge_positive": edge_positive,
-#                }, on_epoch=True, on_step=False, batch_size=1
-#            )
-#            #auc = roc_auc_score(truth.bool().cpu().detach(), score.cpu().detach())
-#        
-#    def shared_evaluation(self, batch, batch_idx, log=False):
-#
-#        weight = (
-#            torch.tensor(self.hparams["weight"])
-#            if ("weight" in self.hparams)
-#            else torch.tensor((~batch.y_pid.bool()).sum() / batch.y_pid.sum())
-#        )
-#
-#        truth = (
-#            batch.y_pid.bool() if "pid" in self.hparams["regime"] else batch.y.bool()
-#        )
-#
-#        edge_sample, truth_sample = self.handle_directed(batch, batch.edge_index, truth)
-#        input_data = self.get_input_data(batch)
-#        output = self(input_data, edge_sample).squeeze()
-#
-#        if "weighting" in self.hparams["regime"]:
-#            manual_weights = batch.weights
-#        else:
-#            manual_weights = None
-#
-#        loss = F.binary_cross_entropy_with_logits(
-#            output, truth_sample.float(), weight=manual_weights, pos_weight=weight
-#        )
-#
-#        # Edge filter performance
-#        score = torch.sigmoid(output)
-#        preds = score > self.hparams["edge_cut"]
-#        
-#       # edge_positive = preds.sum().float()
-#       # edge_true = truth.sum().float()
-#       # edge_true_positive = (
-#       #     (truth.bool() & preds).sum().float()
-#       # )
-#       # 
-#       # print("1")
-#       # print("edge_true_positive:")
-#       # print(edge_true_positive)
-#       # print("edge_true:")
-#       # print(edge_true)
-#       # print("edge_positive:")
-#       # print(edge_positive)
-#        
-#        if log:
-#            self.log_metrics(score, preds, truth_sample, batch, loss)
-#
-#        return {
-#            "loss": loss,
-#            "score": score,
-#            "preds": preds,
-#            "truth": truth_sample,
-#        }
-#
-#    def validation_step(self, batch, batch_idx):
-#
-#        outputs = self.shared_evaluation(batch, batch_idx, log=True)
-#
-#        return outputs["loss"]
-#
-#    def test_step(self, batch, batch_idx):
-#
-#        outputs = self.shared_evaluation(batch, batch_idx, log=False)
-#
-#        return outputs
-#
-#    def optimizer_step(
-#        self,
-#        epoch,
-#        batch_idx,
-#        optimizer,
-#        optimizer_idx,
-#        optimizer_closure=None,
-#        on_tpu=False,
-#        using_native_amp=False,
-#        using_lbfgs=False,
-#    ):
-#        # warm up lr
-#        if (self.hparams["warmup"] is not None) and (
-#            self.current_epoch < self.hparams["warmup"]
-#        ):
-#            lr_scale = min(
-#                1.0, float(self.current_epoch + 1) / self.hparams["warmup"]
-#            )
-#            for pg in optimizer.param_groups:
-#                pg["lr"] = lr_scale * self.hparams["lr"]
-#
-#        # update params
-#        optimizer.step(closure=optimizer_closure)
-#        optimizer.zero_grad()
-#
-
-
 import sys, os
 import logging
 
@@ -282,6 +148,9 @@ class GNNBase(LightningModule):
 
         eff = edge_true_positive.clone().detach() / max(1, edge_true)
         pur = edge_true_positive.clone().detach() / max(1, edge_positive)
+        #print("edge_true:", edge_true)
+        #print("edge_true_positive:", edge_true_positive)
+        #print("edge_positive:", edge_positive)
         #auc = roc_auc_score(truth.bool().cpu().detach(), score.cpu().detach()) 
         try:
             auc = roc_auc_score(truth.bool().cpu().detach(), score.cpu().detach())
@@ -296,6 +165,7 @@ class GNNBase(LightningModule):
                 }, on_epoch=True, on_step=False, batch_size=1
             )
         except ValueError:
+            #auc = roc_auc_score(truth.bool().cpu().detach(), score.cpu().detach())
             current_lr = self.optimizers().param_groups[0]["lr"]
             self.log_dict(
                 {
@@ -303,21 +173,12 @@ class GNNBase(LightningModule):
                     "eff": eff,
                     "pur": pur,
                     "current_lr": current_lr,
+                    "edge_true": edge_true,
+                    "edge_true_postive": edge_true_positive,
+                    "edge_positive": edge_positive,
                 }, on_epoch=True, on_step=False, batch_size=1
             )
-            #auc = roc_auc_score(truth.bool().cpu().detach(), score.cpu().detach())
-        
 
-        #current_lr = self.optimizers().param_groups[0]["lr"]
-        #self.log_dict(
-        #    {
-        #        "val_loss": loss,
-        #        "auc": auc,
-        #        "eff": eff,
-        #        "pur": pur,
-        #        "current_lr": current_lr,
-        #    }, on_epoch=True, on_step=False, batch_size=1
-        #)
 
     def shared_evaluation(self, batch, batch_idx, log=False):
 

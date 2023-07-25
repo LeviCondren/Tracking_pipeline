@@ -14,7 +14,8 @@ import torch
 from torch_geometric.loader import DataLoader
 
 # Local imports
-from ..utils import graph_intersection, make_mlp
+from ..utils import make_mlp
+#from ..utils import graph_intersection, make_mlp
 
 
 class LayerlessEmbedding(EmbeddingBase):

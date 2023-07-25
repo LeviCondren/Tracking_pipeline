@@ -49,7 +49,7 @@ metric_learning_configs:
   factor: 0.7
   patience: 4
   regime: [rp, hnm, norm]
-  max_epochs: 10
+  max_epochs: 3
 
 gnn_configs:
   # Dataset parameters
@@ -78,10 +78,10 @@ gnn_configs:
   lr: 0.002
   factor: 0.7
   patience: 8
-  #truth_key: pid_signal
+  truth_key: pid_signal
   regime: [pid]
   mask_background: True
-  max_epochs: 10
+  max_epochs: 3
 
 track_building_configs:
   score_cut: 0.9

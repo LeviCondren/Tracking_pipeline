@@ -40,7 +40,6 @@ def train(config_file="pipeline_config.yaml"):
     #load the model from saved checkpoint
     #load_from_checkpoint(checkpoint_path, model, *args, **kwargs)
 
-
     logging.info(headline("b) Running inferencing"))
     if common_configs["clear_directories"]:
         delete_directory(metric_learning_configs["output_dir"])
