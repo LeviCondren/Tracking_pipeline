@@ -9,11 +9,11 @@ hparams:
   emb_dim: 12
   emb_hidden: 1024
   factor: 0.7
-  input_dir: datasets/feature_store/quickstart_example_1GeV
+  input_dir: datasets/feature_store/QuirkTracking_sample
   knn: 50
   lr: 0.001
   margin: 0.1
-  max_epochs: 30
+  max_epochs: 10
   nb_layer: 4
   output_dir: datasets/quickstart_metric_learning_processed
   patience: 4
@@ -30,17 +30,17 @@ hparams:
   - norm
   spatial_channels: 3
   train_split: &id002
-  - 80
-  - 3
-  - 3
+  - 71
+  - 8
+  - 8
   true_edges: modulewise_true_edges
   warmup: 8
   weight: 2
-input_dir: datasets/feature_store/quickstart_example_1GeV
+input_dir: datasets/feature_store/QuirkTracking_sample
 knn: 50
 lr: 0.001
 margin: 0.1
-max_epochs: 30
+max_epochs: 10
 nb_layer: 4
 output_dir: datasets/quickstart_metric_learning_processed
 patience: 4

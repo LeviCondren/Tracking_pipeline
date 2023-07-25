@@ -13,7 +13,7 @@ hparams:
   knn: 50
   lr: 0.001
   margin: 0.1
-  max_epochs: 30
+  max_epochs: 10
   nb_layer: 4
   output_dir: datasets/quickstart_metric_learning_processed
   patience: 4
@@ -40,7 +40,7 @@ input_dir: datasets/feature_store/QuirkTracking_sample
 knn: 50
 lr: 0.001
 margin: 0.1
-max_epochs: 30
+max_epochs: 10
 nb_layer: 4
 output_dir: datasets/quickstart_metric_learning_processed
 patience: 4

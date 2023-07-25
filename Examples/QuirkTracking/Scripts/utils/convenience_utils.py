@@ -57,6 +57,7 @@ def get_training_metrics(trainer):
     train_metrics = metrics[ ~ metrics['train_loss'].isna() ][['epoch', 'train_loss']]
     train_metrics['epoch'] -= 1
     val_metrics = metrics[ ~ metrics['val_loss'].isna() ][['val_loss', 'eff', 'pur', 'current_lr', 'epoch']]
+    #val_metrics = metrics[ ~ metrics['val_loss'].isna() ][['val_loss', 'eff', 'pur', 'current_lr', "edge_true_positive", "edge_true", "edge_postive", 'epoch']]
     metrics = pd.merge(left=train_metrics, right=val_metrics, how='inner', on='epoch')
 
     return metrics
