@@ -111,6 +111,8 @@ class GNNBase(LightningModule):
 
     def training_step(self, batch, batch_idx):
 
+        #print(batch)
+        
         weight = (
             torch.tensor(self.hparams["weight"])
             if ("weight" in self.hparams)
@@ -161,6 +163,9 @@ class GNNBase(LightningModule):
                     "auc": auc,
                     "eff": eff,
                     "pur": pur,
+                    "edge_true": edge_true,
+                    "edge_true_postive": edge_true_positive,
+                    "edge_positive": edge_positive,
                     "current_lr": current_lr,
                 }, on_epoch=True, on_step=False, batch_size=1
             )
@@ -191,6 +196,8 @@ class GNNBase(LightningModule):
         truth = (
             batch.y_pid.bool() if "pid" in self.hparams["regime"] else batch.y.bool()
         )
+
+        #print(batch)
 
         edge_sample, truth_sample = self.handle_directed(batch, batch.edge_index, truth)
         input_data = self.get_input_data(batch)

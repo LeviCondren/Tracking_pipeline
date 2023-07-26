@@ -47,15 +47,15 @@ metric_learning_configs:
   margin: 0.1
   lr: 0.001
   factor: 0.7
-  patience: 4
+  patience: 50
   regime: [rp, hnm, norm]
-  max_epochs: 3
+  max_epochs: 150
 
 gnn_configs:
   # Dataset parameters
   input_dir: datasets/quickstart_metric_learning_processed
   output_dir: datasets/quickstart_gnn_processed
-  edge_cut: 0.
+  edge_cut: 0.5
   pt_signal_min: 0.
   pt_background_min: 0.
   datatype_names: [train, val, test] # Which directory prefixes to use, assuming at least a train dataset 
@@ -66,22 +66,21 @@ gnn_configs:
   spatial_channels: 3
   cell_channels: 0
   hidden: 128
-  n_graph_iters: 6
+  n_graph_iters: 8
   nb_node_layer: 3
   nb_edge_layer: 3
   layernorm: True
   aggregation: sum_max
   hidden_activation: SiLU
-  #hidden_activation: SiLU
-  weight: 2
-  warmup: 10
+  weight: 1
+  warmup: 20
   lr: 0.002
   factor: 0.7
-  patience: 8
+  patience: 100
   truth_key: pid_signal
   regime: [pid]
   mask_background: True
-  max_epochs: 3
+  max_epochs: 500
 
 track_building_configs:
   score_cut: 0.9
