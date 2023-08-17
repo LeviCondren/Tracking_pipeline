@@ -47,7 +47,7 @@ class QuirkFeatureStore(FeatureStoreBase):
         all_files = os.listdir(self.input_dir)
         all_events = sorted(
             np.unique([os.path.join(self.input_dir, event[:14]) for event in all_files])
-        )[: int(self.n_files)]  #event000001000-particles.csv [14]
+        )[: int(self.n_files)]  #event000001000-particles0.csv [14]
 
         # Split the input files by number of tasks and select my chunk only
         #all_events = np.array_split(all_events, self.n_tasks)[self.task]
@@ -90,9 +90,9 @@ class QuirkFeatureStore(FeatureStoreBase):
 
 def main():
     hparams = {
-        "input_dir": "datasets/Quirk",
-        "output_dir": "datasets/feature_store/QuirkTracking_sample",
-        "n_files": "102",
+        "input_dir": "datasets/Lambda500/Quirk",
+        "output_dir": "datasets/Lambda500/feature_store/QuirkTracking_sample",
+        "n_files": "2000",
         "n_tasks": "1",
         #"n_workers": "0",
         # Other hparams if needed

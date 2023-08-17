@@ -59,7 +59,7 @@ class EmbeddingInferenceBuilder:
         ]
 
         all_events = os.listdir(self.model.hparams["input_dir"])
-        random.shuffle(all_events)
+        #random.shuffle(all_events)
         self.dataset_list = np.split(np.array(all_events), np.cumsum(self.split))
         
         # By default, the set of examples propagated through the pipeline will be train+val+test set

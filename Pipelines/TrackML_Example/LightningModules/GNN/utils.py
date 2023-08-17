@@ -14,7 +14,7 @@ if device == "cuda":
 
 # ---------------------------- Dataset Processing -------------------------
 
-def load_dataset(input_subdir="",
+def load_dataset(input_subdir,
     num_events=10,
     pt_background_cut=0,
     pt_signal_cut=0,
@@ -33,6 +33,45 @@ def load_dataset(input_subdir="",
         return loaded_events
     else:
         return None
+
+
+def split_datasets(
+    input_subdir,
+    datatype_split=[80, 10, 10],
+    pt_background_cut=0,
+    pt_signal_cut=0,
+    noise=True,
+    seed=1,
+    **kwargs
+):
+    """
+    Prepare the random Train, Val, Test split, using a seed for reproducibility. Seed should be
+    changed across final varied runs, but can be left as default for experimentation.
+    """
+
+    torch.manual_seed(seed)
+    loaded_events = load_dataset(
+        input_subdir,
+        sum(datatype_split),
+        pt_background_cut,
+        pt_signal_cut,
+        noise,
+    )
+    #train_events, val_events, test_events = random_split(loaded_events, train_split)
+
+    total_samples = len(loaded_events)
+    train_size = datatype_split[0]
+    val_size = datatype_split[1]
+    
+    train_indices = list(range(train_size))
+    val_indices = list(range(train_size, train_size + val_size))
+    test_indices = list(range(train_size + val_size, total_samples))
+    
+    train_events = [loaded_events[i] for i in train_indices]
+    val_events = [loaded_events[i] for i in val_indices]
+    test_events = [loaded_events[i] for i in test_indices]
+
+    return train_events, val_events, test_events
 
 
 def select_data(events, pt_background_cut, pt_signal_cut, noise):

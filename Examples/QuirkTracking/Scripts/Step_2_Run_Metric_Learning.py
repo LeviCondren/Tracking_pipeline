@@ -37,6 +37,9 @@ def train(config_file="pipeline_config.yaml"):
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = LayerlessEmbedding.load_from_checkpoint(os.path.join(common_configs["artifact_directory"], "metric_learning", common_configs["experiment_name"]+".ckpt")).to(device)
+    #model.setup(stage='fit')
+    #print(model.testset)
+
     #load the model from saved checkpoint
     #load_from_checkpoint(checkpoint_path, model, *args, **kwargs)
 

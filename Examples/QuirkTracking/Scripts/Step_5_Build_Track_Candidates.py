@@ -60,7 +60,8 @@ def train(config_file="pipeline_config.yaml"):
     logging.info(headline("a) Loading scored graphs" ))
 
     all_graphs = []
-    for subdir in ["train", "val", "test"]:
+    #for subdir in ["train", "val", "test"]:
+    for subdir in ["val", "test"]:
         subdir_graphs = os.listdir(os.path.join(gnn_configs["output_dir"], subdir))
         all_graphs += [torch.load(os.path.join(gnn_configs["output_dir"], subdir, graph), map_location="cpu") for graph in subdir_graphs]
 

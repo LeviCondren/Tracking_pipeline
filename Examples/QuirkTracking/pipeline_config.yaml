@@ -1,6 +1,6 @@
 common_configs:
   experiment_name: quirk
-  artifact_directory: artifacts
+  artifact_directory: artifacts/Lambda500
   gpus: 1
   clear_directories: True
 
@@ -22,11 +22,11 @@ common_configs:
 
 metric_learning_configs:
   # Dataset parameters
-  input_dir: datasets/feature_store/QuirkTracking_sample
-  output_dir: datasets/quickstart_metric_learning_processed
+  input_dir: datasets/Lambda500/feature_store/QuirkTracking_sample
+  output_dir: datasets/Lambda500/quickstart_metric_learning_processed
   pt_signal_cut: 0.
   pt_background_cut: 0.
-  train_split: [71, 8, 8] # Number of [training, validation, testing] examples
+  train_split: [800, 100, 100] # Number of [training, validation, testing] examples  (71,8,8) for lambda100
   true_edges: modulewise_true_edges
 
   # Model parameters
@@ -53,13 +53,13 @@ metric_learning_configs:
 
 gnn_configs:
   # Dataset parameters
-  input_dir: datasets/quickstart_metric_learning_processed
-  output_dir: datasets/quickstart_gnn_processed
+  input_dir: datasets/Lambda500/quickstart_metric_learning_processed
+  output_dir: datasets/Lambda500/quickstart_gnn_processed
   edge_cut: 0.5
   pt_signal_min: 0.
   pt_background_min: 0.
   datatype_names: [train, val, test] # Which directory prefixes to use, assuming at least a train dataset 
-  datatype_split: [71, 8, 8] # Number of [training, validation, testing] examples
+  datatype_split: [800, 100, 100]# Number of [training, validation, testing] examples
   noise: False
 
   # Model parameters
@@ -80,14 +80,14 @@ gnn_configs:
   truth_key: pid_signal
   regime: [pid]
   mask_background: True
-  max_epochs: 500
+  max_epochs: 300
 
 track_building_configs:
   score_cut: 0.9
-  output_dir: datasets/quickstart_track_building_processed
+  output_dir: datasets/Lambda500/quickstart_track_building_processed
 
 evaluation_configs:
-  output_dir: datasets/quickstart_evaluation
+  output_dir: datasets/Lambda500/quickstart_evaluation
   min_pt: 0
   max_eta: 4
   min_track_length: 2

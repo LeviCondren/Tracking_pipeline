@@ -42,7 +42,7 @@ def get_example_data(configs):
 
     model = LayerlessEmbedding(metric_learning_configs)
     model.setup(stage='fit')
-    training_example = model.trainset[0]
+    training_example = model.trainset[1]
 
     example_hit_inputs = model.get_input_data(training_example)
     example_hit_df = pd.DataFrame(example_hit_inputs.numpy())
@@ -142,6 +142,29 @@ def plot_true_graph(sample_data, num_tracks=100):
         p.circle(X, Y, color=cmap[i], size=5)
         p.multi_line(X_edges.T.tolist(), Y_edges.T.tolist(), color=cmap[i])
         
+    show(p)
+
+def plot_true_graph_select(sample_data, num_tracks=100, selected_pid=2142):
+
+    p = figure(title='Truth graph', x_axis_label='x', y_axis_label='y', height=800, width=800) 
+ 
+    true_edges = sample_data.signal_true_edges
+    true_unique, true_lengths = sample_data.pid[true_edges[0]].unique(return_counts=True)
+    pid = sample_data.pid
+    r, phi, z = sample_data.cpu().x.T
+    x, y = r * np.cos(phi * np.pi), r * np.sin(phi * np.pi)
+    cmap = viridis(num_tracks)
+    source = ColumnDataSource(dict(x=x.numpy(), y=y.numpy()))
+    p.circle(x='x', y='y', source=source, color=cmap[0], size=1, alpha=0.1)
+
+    selected_edges = true_edges[:, np.where(pid[true_edges[0]] == selected_pid)[0]]
+    X_selected, Y_selected = x[selected_edges].numpy(), y[selected_edges].numpy()
+    X_selected_concat = np.concatenate(X_selected)
+    Y_selected_concat = np.concatenate(Y_selected)
+
+    p.circle(X_selected_concat, Y_selected_concat, color='red', size=5)
+    p.multi_line(X_selected.T.tolist(), Y_selected.T.tolist(), color='red')
+
     show(p)
 
 def plot_predicted_graph(model, radius = 0.1):

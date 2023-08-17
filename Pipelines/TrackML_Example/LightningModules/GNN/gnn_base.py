@@ -9,7 +9,7 @@ from torch_geometric.loader import DataLoader
 from torch.nn import Linear
 import torch
 
-from .utils import load_dataset, random_edge_slice_v2
+from .utils import load_dataset, split_datasets, random_edge_slice_v2
 from sklearn.metrics import roc_auc_score
 
 
@@ -30,6 +30,7 @@ class GNNBase(LightningModule):
             os.path.join(self.hparams["input_dir"], datatype)
             for datatype in self.hparams["datatype_names"]
         ]
+        
         self.trainset, self.valset, self.testset = [
             load_dataset(
                 input_subdir=input_subdir,
@@ -38,6 +39,12 @@ class GNNBase(LightningModule):
             )
             for i, input_subdir in enumerate(input_subdirs)
         ]
+        #print("----------trainset------------")
+        #print(self.trainset)
+        #print("------------test--------------")
+        #print(self.testset)
+        #print("-------------val--------------")
+        #print(self.valset)
 
     def setup_data(self):
 

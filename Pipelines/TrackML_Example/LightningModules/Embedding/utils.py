@@ -94,7 +94,19 @@ def split_datasets(
         true_edges,
         noise,
     )
-    train_events, val_events, test_events = random_split(loaded_events, train_split)
+    #train_events, val_events, test_events = random_split(loaded_events, train_split)
+
+    total_samples = len(loaded_events)
+    train_size = train_split[0]
+    val_size = train_split[1]
+    
+    train_indices = list(range(train_size))
+    val_indices = list(range(train_size, train_size + val_size))
+    test_indices = list(range(train_size + val_size, total_samples))
+    
+    train_events = [loaded_events[i] for i in train_indices]
+    val_events = [loaded_events[i] for i in val_indices]
+    test_events = [loaded_events[i] for i in test_indices]
 
     return train_events, val_events, test_events
 

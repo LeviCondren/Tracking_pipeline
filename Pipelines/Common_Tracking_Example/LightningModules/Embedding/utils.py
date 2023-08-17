@@ -105,6 +105,7 @@ def split_datasets(
         true_edges,
         noise,
     )
+
     train_events, val_events, test_events = random_split(loaded_events, train_split)
 
     return train_events, val_events, test_events

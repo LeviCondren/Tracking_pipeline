@@ -39,8 +39,9 @@ def train(config_file="pipeline_config.yaml"):
     logging.info(headline("a) Initialising model"))
 
     model = LayerlessEmbedding(metric_learning_configs)
-
     logging.info(headline("b) Running training" ))
+    model.setup(stage='fit')
+    print(model.testset)
 
     save_directory = os.path.join(common_configs["artifact_directory"], "metric_learning")
     logger = CSVLogger(save_directory, name=common_configs["experiment_name"])
