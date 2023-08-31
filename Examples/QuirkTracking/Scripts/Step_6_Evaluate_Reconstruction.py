@@ -26,10 +26,73 @@ def parse_args():
     add_arg("config", nargs="?", default="pipeline_config.yaml")
     return parser.parse_args()
 
+
+def conformal_mapping(file):
+
+    graph = torch.load(file, map_location="cpu")
+    #reconstruction_hit = pd.DataFrame({"hit_id": graph.hid, "track_id": graph.labels, "particle_id": graph.pid, "pt": graph.pt, "x": graph.x[:,0].detach().numpy(), "y": graph.x[:,1].detach().numpy(), "z": graph.x[:,2].detach().numpy()})
+    x = graph.x[:,0].detach().numpy()
+    y = graph.x[:,1].detach().numpy()
+    z = graph.x[:,2].detach().numpy()
+    hid = graph.hid
+    tid = graph.labels
+    pid = graph.pid
+    event_file = graph.event_file[-4:]
+
+    """
+    x, y, z: np.array([])
+    return: 
+    """
+    # ref. 10.1016/0168-9002(88)90722-X
+    r = x**2 + y**2
+    #print(x, y, r)
+    u = x/r
+    v = y/r
+    # assuming the imapact parameter is small
+    # the v = 1/(2b) - u x a/b - u^2 x epsilon x (R/b)^3
+    pp, vv = np.polyfit(u, v, 2, cov=True)
+    b = 0.5/pp[2]
+    a = -pp[1]*b
+    R = np.sqrt(a**2 + b**2)
+    e = -pp[0] / (R/b)**3 # approximately equals to d0
+    dev = 2*e*R / b**2
+
+    magnetic_field = 2.0
+    pT = 0.3*magnetic_field*R # in MeV
+    # print(a, b, R, e, pT)
+
+    p_rz = np.polyfit(np.sqrt(r), z, 2)
+    #print(p_rz)
+    
+    pp_rz = np.poly1d(p_rz)
+   # print("pp_rz:")
+   # print(pp_rz)
+    z0 = pp_rz(abs(e))
+    #print("z0:")
+    #print(z0)
+
+    r3 = np.sqrt(r + z**2)
+    p_zr = np.polyfit(r3, z, 2)
+    #print(r3)
+    #print(z)
+    #print(p_zr)
+    cos_val = p_zr[0]*z0 + p_zr[1]
+    theta = np.arccos(cos_val)
+    eta = -np.log(np.tan(theta/2.))
+    # phi = np.atan2(b, a)
+    phi = np.arctan2(b, a)
+    
+    parameter_track = pd.DataFrame({"hit_id": hid, "track_id": tid, "particle_id": pid,  "e": e, "z0": z0, "eta": eta, "phi": phi,  "dev": dev, "cos_val": cos_val, "theta": theta, "pT": pT, "event_file": event_file})
+    
+    #print(parameter_track)
+    return parameter_track
+
+
 def load_reconstruction_df(file):
     """Load the reconstructed tracks from a file."""
     graph = torch.load(file, map_location="cpu")
     reconstruction_df = pd.DataFrame({"hit_id": graph.hid, "track_id": graph.labels, "particle_id": graph.pid})
+    #print(reconstruction_df)
     return reconstruction_df
 
 def load_particles_df(file):
@@ -41,7 +104,7 @@ def load_particles_df(file):
 
     # Reduce to only unique particle_ids
     particles_df = particles_df.drop_duplicates(subset=['particle_id'])
-
+    #print(particles_df)
     return particles_df
 
 def get_matching_df(reconstruction_df, particles_df, min_track_length=1, min_particle_length=1):
@@ -66,7 +129,8 @@ def get_matching_df(reconstruction_df, particles_df, min_track_length=1, min_par
     # Filter out tracks with too few shared spacepoints
     spacepoint_matching["is_matchable"] = spacepoint_matching.n_reco_hits >= min_track_length
     spacepoint_matching["is_reconstructable"] = spacepoint_matching.n_true_hits >= min_particle_length
-
+    spacepoint_matching["is_catchable"] = spacepoint_matching.n_true_hits - spacepoint_matching.n_reco_hits <= 2
+    
     return spacepoint_matching
 
 def calculate_matching_fraction(spacepoint_matching_df):
@@ -90,13 +154,17 @@ def evaluate_labelled_graph(graph_file, matching_fraction=0.5, matching_style="A
     reconstruction_df = load_reconstruction_df(graph_file)
     particles_df = load_particles_df(graph_file)
 
-    # Get matching dataframe
+    #print("--------------------------reconstruction_df----------------------------")
+    #print(reconstruction_df)
+    #print("--------------------------particle_df----------------------------")
+    #print(particles_df)
+    # Get matching dataframe 
     matching_df = get_matching_df(reconstruction_df, particles_df, min_track_length=min_track_length, min_particle_length=min_particle_length) 
     matching_df["event_id"] = int(graph_file.split("/")[-1])
 
     # calculate matching fraction
     matching_df = calculate_matching_fraction(matching_df)
-
+     
     # Run matching depending on the matching style
     if matching_style == "ATLAS":
         matching_df["is_matched"] = matching_df["is_reconstructed"] = matching_df.purity_reco >= matching_fraction
@@ -105,7 +173,14 @@ def evaluate_labelled_graph(graph_file, matching_fraction=0.5, matching_style="A
         matching_df["is_reconstructed"] = matching_df.eff_true >= matching_fraction
     elif matching_style == "two_way":
         matching_df["is_matched"] = matching_df["is_reconstructed"] = (matching_df.purity_reco >= matching_fraction) & (matching_df.eff_true >= matching_fraction)
-
+    
+    #if matching_df["is_matchable"].any():
+    #    print("--------------------------matching_df----------------------------")
+    #    print(matching_df)
+    #    print("--------------------------reconstruction_df----------------------------")
+    #    print(reconstruction_df)
+    #    print("--------------------------particle_df----------------------------")
+    #    print(particles_df)
     return matching_df
 
 def evaluate(config_file="pipeline_config.yaml"):
@@ -129,16 +204,30 @@ def evaluate(config_file="pipeline_config.yaml"):
     all_graph_files = [os.path.join(input_dir, graph) for graph in all_graph_files]
 
     evaluated_events = []
+    events_parameters_track = []
+    reconstruction_hit = []
     for graph_file in tqdm(all_graph_files):
         evaluated_events.append(evaluate_labelled_graph(graph_file, 
                                 matching_fraction=evaluation_configs["matching_fraction"], 
                                 matching_style=evaluation_configs["matching_style"],
                                 min_track_length=evaluation_configs["min_track_length"],
                                 min_particle_length=evaluation_configs["min_particle_length"]))
+        events_parameters_track.append(conformal_mapping(graph_file))
     evaluated_events = pd.concat(evaluated_events)
+    events_parameters_track = pd.concat(events_parameters_track)
 
     particles = evaluated_events[evaluated_events["is_reconstructable"]]
-    reconstructed_particles = particles[particles["is_reconstructed"] & particles["is_matchable"]]    
+    reconstructed_particles = particles[particles["is_reconstructed"] & particles["is_matchable"] & particles["is_catchable"]]
+    #print("reconstructed_particles:") 
+    #print(reconstructed_particles)
+    merged_data = pd.merge(reconstructed_particles, events_parameters_track, on=["track_id", "particle_id"])
+    columns_to_drop = ["is_reconstructable", "is_matchable","is_catchable","is_matched","is_reconstructed"]
+    merged_data = merged_data.drop(columns=columns_to_drop)
+    # 输出合并后的数据
+    print(merged_data)
+    merged_data.to_csv("track.log", index=False)
+    
+     
     tracks = evaluated_events[evaluated_events["is_matchable"]]
     matched_tracks = tracks[tracks["is_matched"]]
 
@@ -147,7 +236,7 @@ def evaluate(config_file="pipeline_config.yaml"):
     
     n_tracks = len(tracks.drop_duplicates(subset=['event_id', 'track_id']))
     n_matched_tracks = len(matched_tracks.drop_duplicates(subset=['event_id', 'track_id']))
-
+    
     n_dup_reconstructed_particles = len(reconstructed_particles) - n_reconstructed_particles
 
     logging.info(headline("b) Calculating the performance metrics"))
@@ -178,13 +267,12 @@ def evaluate(config_file="pipeline_config.yaml"):
 
     # TODO: Plot the results
     return evaluated_events, reconstructed_particles, particles, matched_tracks, tracks
-    
-
-
 
 if __name__ == "__main__":
 
     args = parse_args()
     config_file = args.config
+    
+    #load_particles_info(config_file)
 
     evaluate(config_file) 

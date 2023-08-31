@@ -21,11 +21,11 @@ def parse_args():
     """Parse command line arguments."""
     parser = argparse.ArgumentParser("3_Train_GNN.py")
     add_arg = parser.add_argument
-    add_arg("config", nargs="?", default="pipeline_config.yaml")
+    add_arg("config", nargs="?", default="pipeline_config_quirk.yaml")
     return parser.parse_args()
 
 
-def train(config_file="pipeline_config.yaml"):
+def train(config_file="pipeline_config_quirk.yaml"):
 
     logging.info(headline(" Step 3: Running GNN training "))
 

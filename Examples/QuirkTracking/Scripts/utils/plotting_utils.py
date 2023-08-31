@@ -11,8 +11,8 @@ import itertools
 
 fontsize=16
 minor_size=14
-pt_min, pt_max = 1, 20
-default_pt_bins = np.logspace(np.log10(pt_min), np.log10(pt_max), 10)
+pt_min, pt_max = 1, 200
+default_pt_bins = np.logspace(np.log10(pt_min), np.log10(pt_max), 15)
 default_pt_configs = {
     'bins': default_pt_bins,
     'histtype': 'step',
@@ -147,10 +147,12 @@ def plot_observable_performance(particles: pd.DataFrame):
 def plot_pt_eff(particles):
 
     pt = particles.pt.values
+    #print(pt)
 
     true_pt = pt[particles["is_reconstructable"]]
     reco_pt = pt[particles["is_reconstructable"] & particles["is_reconstructed"]]
-
+    #print(true_pt)
+    #print(reco_pt)
     # Get histogram values of true_pt and reco_pt
     true_vals, true_bins = np.histogram(true_pt, bins=default_pt_bins)
     reco_vals, reco_bins = np.histogram(reco_pt, bins=default_pt_bins)

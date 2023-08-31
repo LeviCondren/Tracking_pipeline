@@ -90,7 +90,7 @@ evaluation_configs:
   output_dir: datasets/Lambda500/quickstart_evaluation
   min_pt: 0
   max_eta: 4
-  min_track_length: 2
-  min_particle_length: 2
+  min_track_length: 7
+  min_particle_length: 7
   matching_fraction: 0.5
   matching_style: ATLAS
