@@ -37,6 +37,7 @@ def conformal_mapping(file):
     hid = graph.hid
     tid = graph.labels
     pid = graph.pid
+    true_pt = graph.pt
     event_file = graph.event_file[-4:]
 
     """
@@ -82,7 +83,7 @@ def conformal_mapping(file):
     # phi = np.atan2(b, a)
     phi = np.arctan2(b, a)
     
-    parameter_track = pd.DataFrame({"hit_id": hid, "track_id": tid, "particle_id": pid,  "e": e, "z0": z0, "eta": eta, "phi": phi,  "dev": dev, "cos_val": cos_val, "theta": theta, "pT": pT, "event_file": event_file})
+    parameter_track = pd.DataFrame({"hit_id": hid, "track_id": tid, "particle_id": pid, "hit_x": x, "hit_y": y, "hit_z": z, "e": e, "z0": z0, "eta": eta, "phi": phi,  "dev": dev, "cos_val": cos_val, "theta": theta, "mapping_pT": pT,  "event_file": event_file})
     
     #print(parameter_track)
     return parameter_track
@@ -129,7 +130,7 @@ def get_matching_df(reconstruction_df, particles_df, min_track_length=1, min_par
     # Filter out tracks with too few shared spacepoints
     spacepoint_matching["is_matchable"] = spacepoint_matching.n_reco_hits >= min_track_length
     spacepoint_matching["is_reconstructable"] = spacepoint_matching.n_true_hits >= min_particle_length
-    spacepoint_matching["is_catchable"] = spacepoint_matching.n_true_hits - spacepoint_matching.n_reco_hits <= 2
+    spacepoint_matching["is_catchable"] = spacepoint_matching.n_true_hits - spacepoint_matching.n_reco_hits  <= 5
     
     return spacepoint_matching
 
@@ -220,13 +221,19 @@ def evaluate(config_file="pipeline_config.yaml"):
     reconstructed_particles = particles[particles["is_reconstructed"] & particles["is_matchable"] & particles["is_catchable"]]
     #print("reconstructed_particles:") 
     #print(reconstructed_particles)
-    merged_data = pd.merge(reconstructed_particles, events_parameters_track, on=["track_id", "particle_id"])
+    reconstruct_data = pd.merge(reconstructed_particles, events_parameters_track, on=["track_id", "particle_id"])
     columns_to_drop = ["is_reconstructable", "is_matchable","is_catchable","is_matched","is_reconstructed"]
-    merged_data = merged_data.drop(columns=columns_to_drop)
+    reconstruct_data = reconstruct_data.drop(columns=columns_to_drop)
     # 输出合并后的数据
-    print(merged_data)
-    merged_data.to_csv("track.log", index=False)
-    
+    #print(reconstruct_data)
+    #reconstruct_data.to_csv("track.csv", index=False)
+   
+    particles_data = pd.merge(particles, events_parameters_track, on=["track_id", "particle_id"])
+    columns_to_drop = ["is_reconstructable", "is_matchable","is_catchable","is_matched","is_reconstructed"]
+    particles_data = particles_data.drop(columns=columns_to_drop)
+    # 输出合并后的数据
+    #print(reconstruct_data)
+    #particles_data.to_csv("track_particles.csv", index=False) 
      
     tracks = evaluated_events[evaluated_events["is_matchable"]]
     matched_tracks = tracks[tracks["is_matched"]]
@@ -266,7 +273,7 @@ def evaluate(config_file="pipeline_config.yaml"):
     plot_pt_eff(particles)
 
     # TODO: Plot the results
-    return evaluated_events, reconstructed_particles, particles, matched_tracks, tracks
+    return evaluated_events, reconstructed_particles, particles, matched_tracks, tracks, reconstruct_data, particles_data
 
 if __name__ == "__main__":
 
