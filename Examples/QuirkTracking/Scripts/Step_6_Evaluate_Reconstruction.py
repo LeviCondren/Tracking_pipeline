@@ -30,10 +30,12 @@ def parse_args():
 def conformal_mapping(file):
 
     graph = torch.load(file, map_location="cpu")
-    #reconstruction_hit = pd.DataFrame({"hit_id": graph.hid, "track_id": graph.labels, "particle_id": graph.pid, "pt": graph.pt, "x": graph.x[:,0].detach().numpy(), "y": graph.x[:,1].detach().numpy(), "z": graph.x[:,2].detach().numpy()})
-    x = graph.x[:,0].detach().numpy()
-    y = graph.x[:,1].detach().numpy()
+    r_reco = graph.x[:,0].detach().numpy()
+    phi_reco = graph.x[:,1].detach().numpy()
     z = graph.x[:,2].detach().numpy()
+    x = r_reco * np.cos(phi_reco)
+    y = r_reco * np.sin(phi_reco)
+    
     hid = graph.hid
     tid = graph.labels
     pid = graph.pid
@@ -44,48 +46,59 @@ def conformal_mapping(file):
     x, y, z: np.array([])
     return: 
     """
-    # ref. 10.1016/0168-9002(88)90722-X
-    r = x**2 + y**2
-    #print(x, y, r)
-    u = x/r
-    v = y/r
-    # assuming the imapact parameter is small
-    # the v = 1/(2b) - u x a/b - u^2 x epsilon x (R/b)^3
-    pp, vv = np.polyfit(u, v, 2, cov=True)
-    b = 0.5/pp[2]
-    a = -pp[1]*b
-    R = np.sqrt(a**2 + b**2)
-    e = -pp[0] / (R/b)**3 # approximately equals to d0
-    dev = 2*e*R / b**2
-
-    magnetic_field = 2.0
-    pT = 0.3*magnetic_field*R # in MeV
-    # print(a, b, R, e, pT)
-
-    p_rz = np.polyfit(np.sqrt(r), z, 2)
-    #print(p_rz)
+    unique_particle_ids = np.unique(pid)  # get different 1particle_id
     
-    pp_rz = np.poly1d(p_rz)
-   # print("pp_rz:")
-   # print(pp_rz)
-    z0 = pp_rz(abs(e))
-    #print("z0:")
-    #print(z0)
+    for particle_id in unique_particle_ids:
+        # ref. 10.1016/0168-9002(88)90722-X
+        # choose the dataset with different particle_id
+        mask = (pid == particle_id)
+        x_particle = x[mask]
+        #y_particle = y[mask] 
+        y_particle = y[mask] - 0.001
+        z_particle = z[mask]
+        
+        r = x_particle**2 + y_particle**2
+        true_pt_particle = true_pt[mask]
 
-    r3 = np.sqrt(r + z**2)
-    p_zr = np.polyfit(r3, z, 2)
-    #print(r3)
-    #print(z)
-    #print(p_zr)
-    cos_val = p_zr[0]*z0 + p_zr[1]
-    theta = np.arccos(cos_val)
-    eta = -np.log(np.tan(theta/2.))
-    # phi = np.atan2(b, a)
-    phi = np.arctan2(b, a)
+        u = x_particle / r
+        v = y_particle / r
+        # assuming the imapact parameter is small
+        # the v = 1/(2b) - u x a/b - u^2 x epsilon x (R/b)^3
+        if len(u) < 6 or len(v) < 6: # Choose at least 6 hits.
+            continue
+        #print(f"u:{u}")
+        #print(f"v:{v}")
+        pp, vv = np.polyfit(u, v, 2, cov=True)
+        b = 0.5/pp[2]
+        a = -pp[1]*b
+        R = np.sqrt(a**2 + b**2)
+        e = -pp[0] / (R/b)**3 # approximately equals to d0
+        dev = 2*e*R / b**2
+
+        magnetic_field = 2.0
+        pT = 0.3*magnetic_field*R # in MeV
+        # print(a, b, R, e, pT)
+
+        p_rz = np.polyfit(np.sqrt(r), z_particle, 2)
+        y_p_rz = np.polyval(p_rz, np.sqrt(r))
+        residuals = z_particle - y_p_rz
+        chi_square = np.sum((residuals / y_p_rz)**2)
+        
+        y_p_rz = np.polyval(p_rz, np.sqrt(r))
     
-    parameter_track = pd.DataFrame({"hit_id": hid, "track_id": tid, "particle_id": pid, "hit_x": x, "hit_y": y, "hit_z": z, "e": e, "z0": z0, "eta": eta, "phi": phi,  "dev": dev, "cos_val": cos_val, "theta": theta, "mapping_pT": pT,  "event_file": event_file})
+        pp_rz = np.poly1d(p_rz)
+        z0 = pp_rz(abs(e))
+
+        r3 = np.sqrt(r + z_particle**2)
+        p_zr = np.polyfit(r3, z_particle, 2)
     
-    #print(parameter_track)
+        cos_val = p_zr[0]*z0 + p_zr[1]
+        theta = np.arccos(cos_val)
+        eta = -np.log(np.tan(theta/2.))
+        phi = np.arctan2(b, a)
+    
+    parameter_track = pd.DataFrame({"hit_id": hid, "track_id": tid, "particle_id": pid, "x": x, "y": y, "z": z, "r": r_reco, "phi_reco": phi_reco, "e": e, "z0": z0, "eta": eta, "phi": phi,  "dev": dev, "cos_val": cos_val, "theta": theta, "mapping_pT": pT,  "event_file": event_file, "chi_square_rz": chi_square})
+    
     return parameter_track
 
 
@@ -218,22 +231,21 @@ def evaluate(config_file="pipeline_config.yaml"):
     events_parameters_track = pd.concat(events_parameters_track)
 
     particles = evaluated_events[evaluated_events["is_reconstructable"]]
-    reconstructed_particles = particles[particles["is_reconstructed"] & particles["is_matchable"] & particles["is_catchable"]]
-    #print("reconstructed_particles:") 
-    #print(reconstructed_particles)
+    #reconstructed_particles = particles[particles["is_reconstructed"] & particles["is_matchable"] & particles["is_catchable"]]
+    
+    #With reconstructed
+    reconstructed_particles = particles[particles["is_reconstructed"] & particles["is_matchable"] ]
     reconstruct_data = pd.merge(reconstructed_particles, events_parameters_track, on=["track_id", "particle_id"])
     columns_to_drop = ["is_reconstructable", "is_matchable","is_catchable","is_matched","is_reconstructed"]
     reconstruct_data = reconstruct_data.drop(columns=columns_to_drop)
-    # 输出合并后的数据
     #print(reconstruct_data)
-    #reconstruct_data.to_csv("track.csv", index=False)
+    reconstruct_data.to_csv("./output/track_prue_quirk_val_1000.csv", index=False)
    
+    #Without reconstructed
     particles_data = pd.merge(particles, events_parameters_track, on=["track_id", "particle_id"])
     columns_to_drop = ["is_reconstructable", "is_matchable","is_catchable","is_matched","is_reconstructed"]
     particles_data = particles_data.drop(columns=columns_to_drop)
-    # 输出合并后的数据
-    #print(reconstruct_data)
-    #particles_data.to_csv("track_particles.csv", index=False) 
+    particles_data.to_csv("./output/track_bkg_2000_no_reco.csv", index=False) 
      
     tracks = evaluated_events[evaluated_events["is_matchable"]]
     matched_tracks = tracks[tracks["is_matched"]]
