@@ -6,6 +6,10 @@ Home-page: https://github.com/HSF-reco-and-software-triggers/Tracking-ML-Exa.Trk
 Author: Daniel Murnane
 License: Apache License, Version 2.0
 Keywords: graph networks,track finding,tracking,seeding,GNN,machine learning
+Requires-Dist: decorator
+Requires-Dist: memory_profiler
+Requires-Dist: traintrack
+Requires-Dist: trackml@ https://github.com/LAL/trackml-library/tarball/master#egg=trackml-3
 
 <div align="center">
 

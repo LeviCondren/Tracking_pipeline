@@ -90,8 +90,8 @@ class QuirkFeatureStore(FeatureStoreBase):
 
 def main():
     hparams = {
-        "input_dir": "datasets/Lambda500_quirk_test/Quirk",
-        "output_dir": "datasets/Lambda500_quirk_test/feature_store/QuirkTracking_sample",
+        "input_dir": "datasets/Lambda500_quirk/Quirk",
+        "output_dir": "datasets/Lambda500_quirk/feature_store/QuirkTracking_sample",
         "n_files": "10000",
         "n_tasks": "1",
         #"n_workers": "0",

@@ -54,7 +54,7 @@ class GNNBase(LightningModule):
         if ("trainset" not in self.__dict__.keys()) or (self.trainset is None):
             self.setup_data()
 
-        return DataLoader(self.trainset, batch_size=1, num_workers=16)
+        return DataLoader(self.trainset, batch_size=4, num_workers=16)
 
     def val_dataloader(self):
         if self.valset is not None:

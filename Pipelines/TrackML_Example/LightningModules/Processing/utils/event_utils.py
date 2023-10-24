@@ -49,19 +49,20 @@ def get_modulewise_edges(hits):
     signal = hits[
         ((~hits.particle_id.isna()) & (hits.particle_id != 0)) & (~hits.vx.isna())
     ]
-    signal = signal.drop_duplicates(
-        subset=["particle_id", "layer_id"]
-    )
+    #signal = signal.drop_duplicates(
+    #    subset=["particle_id", "layer_id"]
+    #)
 
     # Sort by increasing distance from production
-    signal = signal.assign(
-        R=np.sqrt(
-            (signal.x - signal.vx) ** 2
-            + (signal.y - signal.vy) ** 2
-            + (signal.z - signal.vz) ** 2
-        )
-    )
-    signal = signal.sort_values("R").reset_index(drop=False)
+    #signal = signal.assign(
+    #    R=np.sqrt(
+    #        (signal.x - signal.vx) ** 2
+    #        + (signal.y - signal.vy) ** 2
+    #        + (signal.z - signal.vz) ** 2
+    #    )
+    #)
+    #signal = signal.sort_values("R").reset_index(drop=False) # R to hit_id, compare plots
+    signal = signal.sort_values("hit_id").reset_index(drop=False) # R to hit_id, compare plots
 
     # Handle re-indexing
     signal = signal.rename(columns={"index": "unsorted_index"}).reset_index(drop=False)
@@ -118,8 +119,8 @@ def select_hits(truth, particles, endcaps=False, noise=False, min_pt=None):
         truth = truth[truth.pt > min_pt]
 
     # Calculate derived hits variables
-    x = truth.r*np.sin(truth.phi)
-    y = truth.r*np.cos(truth.phi)
+    x = truth.r*np.cos(truth.phi)
+    y = truth.r*np.sin(truth.phi)
     z = truth.z
     #r = np.sqrt(hits.x**2 + hits.y**2)
     #phi = np.arctan2(hits.y, hits.x)
@@ -198,7 +199,7 @@ def prepare_event(
         #print("---")
         if not os.path.exists(filename) or overwrite:
             logging.info("Preparing event {}".format(evtid))
-            feature_scale = [50, np.pi, 100]  #r(cm),z(cm)
+            feature_scale = [51.4, 1, 100]  #r(cm),z(cm)
 
             (
                 X,

@@ -92,5 +92,8 @@ src/Pipelines/Examples/notebooks/*.png
 # dataset and outputs
 *datasets*
 *artifacts*
+*Re_Track_4vec*
 *_dev*
 **_dev**
+*output*
+*plot*

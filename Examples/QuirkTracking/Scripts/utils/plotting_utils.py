@@ -11,7 +11,7 @@ import itertools
 
 fontsize=16
 minor_size=14
-pt_min, pt_max = 1, 200
+pt_min, pt_max = 1, 800
 default_pt_bins = np.logspace(np.log10(pt_min), np.log10(pt_max), 15)
 default_pt_configs = {
     'bins': default_pt_bins,

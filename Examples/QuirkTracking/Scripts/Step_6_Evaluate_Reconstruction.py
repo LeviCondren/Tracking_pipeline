@@ -40,7 +40,7 @@ def conformal_mapping(file):
     tid = graph.labels
     pid = graph.pid
     true_pt = graph.pt
-    event_file = graph.event_file[-4:]
+    event_file = int(graph.event_file[-4:])
 
     """
     x, y, z: np.array([])
@@ -97,7 +97,7 @@ def conformal_mapping(file):
         eta = -np.log(np.tan(theta/2.))
         phi = np.arctan2(b, a)
     
-    parameter_track = pd.DataFrame({"hit_id": hid, "track_id": tid, "particle_id": pid, "x": x, "y": y, "z": z, "r": r_reco, "phi_reco": phi_reco, "e": e, "z0": z0, "eta": eta, "phi": phi,  "dev": dev, "cos_val": cos_val, "theta": theta, "mapping_pT": pT,  "event_file": event_file, "chi_square_rz": chi_square})
+    parameter_track = pd.DataFrame({"hit_id": hid, "track_id": tid, "particle_id": pid, "x": x, "y": y, "z": z, "r": r_reco, "phi_reco": phi_reco, "e": e, "z0": z0, "eta": eta, "phi": phi,  "dev": dev, "cos_val": cos_val, "theta": theta, "mapping_pT": pT,  "event_id": event_file, "chi_square_rz": chi_square})
     
     return parameter_track
 
@@ -235,23 +235,24 @@ def evaluate(config_file="pipeline_config.yaml"):
     
     #With reconstructed
     reconstructed_particles = particles[particles["is_reconstructed"] & particles["is_matchable"] ]
-    reconstruct_data = pd.merge(reconstructed_particles, events_parameters_track, on=["track_id", "particle_id"])
+    #reconstruct_data = reconstructed_particles
+    reconstruct_data = pd.merge(reconstructed_particles, events_parameters_track, on=["track_id", "particle_id", "event_id"])
     columns_to_drop = ["is_reconstructable", "is_matchable","is_catchable","is_matched","is_reconstructed"]
     reconstruct_data = reconstruct_data.drop(columns=columns_to_drop)
-    #print(reconstruct_data)
-    reconstruct_data.to_csv("./output/track_prue_quirk_val_1000.csv", index=False)
+    reconstruct_data.to_csv("./output/quirk_nosel/track_quirk_sel_2000_1400.csv", index=False)
+    #reconstruct_data.to_csv("./output/mix/track_mix_quirk_sel_2000_1800.csv", index=False)
    
     #Without reconstructed
-    particles_data = pd.merge(particles, events_parameters_track, on=["track_id", "particle_id"])
+    particles_data = pd.merge(particles, events_parameters_track, on=["track_id", "particle_id", "event_id"])
     columns_to_drop = ["is_reconstructable", "is_matchable","is_catchable","is_matched","is_reconstructed"]
     particles_data = particles_data.drop(columns=columns_to_drop)
-    particles_data.to_csv("./output/track_bkg_2000_no_reco.csv", index=False) 
+    #particles_data.to_csv("./output/mix/track_mix_quirk_sel_2000_1800_noreco.csv", index=False) 
      
     tracks = evaluated_events[evaluated_events["is_matchable"]]
     matched_tracks = tracks[tracks["is_matched"]]
 
     n_particles = len(particles.drop_duplicates(subset=['event_id', 'particle_id']))
-    n_reconstructed_particles = len(reconstructed_particles.drop_duplicates(subset=['event_id', 'particle_id']))
+    n_reconstructed_particles = len(reconstruct_data.drop_duplicates(subset=['event_id', 'particle_id']))
     
     n_tracks = len(tracks.drop_duplicates(subset=['event_id', 'track_id']))
     n_matched_tracks = len(matched_tracks.drop_duplicates(subset=['event_id', 'track_id']))
