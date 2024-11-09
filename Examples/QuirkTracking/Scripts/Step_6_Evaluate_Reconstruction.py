@@ -16,8 +16,15 @@ import matplotlib.pyplot as plt
 from tqdm.contrib.concurrent import process_map
 from tqdm import tqdm
 from functools import partial
+
+
 from utils.convenience_utils import headline
-from utils.plotting_utils import plot_pt_eff
+from utils.plotting_utils import plot_pt_eff, plot_edgewise_eff
+
+# Set up logging configuration
+logging.basicConfig(level=logging.INFO,  # Set the logging level to INFO (you can use DEBUG for more verbosity)
+                    format='%(asctime)s - %(levelname)s - %(message)s',  # Define the output format
+                    handlers=[logging.StreamHandler()])  # Ensure logs are printed to the console (terminal)
 
 def parse_args():
     """Parse command line arguments."""
@@ -232,14 +239,14 @@ def evaluate(config_file="pipeline_config.yaml"):
 
     particles = evaluated_events[evaluated_events["is_reconstructable"]]
     #reconstructed_particles = particles[particles["is_reconstructed"] & particles["is_matchable"] & particles["is_catchable"]]
-    
+
     #With reconstructed
     reconstructed_particles = particles[particles["is_reconstructed"] & particles["is_matchable"] ]
     #reconstruct_data = reconstructed_particles
     reconstruct_data = pd.merge(reconstructed_particles, events_parameters_track, on=["track_id", "particle_id", "event_id"])
     columns_to_drop = ["is_reconstructable", "is_matchable","is_catchable","is_matched","is_reconstructed"]
     reconstruct_data = reconstruct_data.drop(columns=columns_to_drop)
-    reconstruct_data.to_csv("./output/quirk_nosel/track_quirk_sel_2000_1400.csv", index=False)
+    reconstruct_data.to_csv("./output/test_bkg_and_signal.csv", index=False)
     #reconstruct_data.to_csv("./output/mix/track_mix_quirk_sel_2000_1800.csv", index=False)
    
     #Without reconstructed
@@ -251,23 +258,58 @@ def evaluate(config_file="pipeline_config.yaml"):
     tracks = evaluated_events[evaluated_events["is_matchable"]]
     matched_tracks = tracks[tracks["is_matched"]]
 
-    n_particles = len(particles.drop_duplicates(subset=['event_id', 'particle_id']))
-    n_reconstructed_particles = len(reconstruct_data.drop_duplicates(subset=['event_id', 'particle_id']))
+
+    folder_path = "Examples/QuirkTracking/Scripts/combined_bkg_signal_added"
+    csv_files = [file for file in os.listdir(folder_path) if file.endswith('-particles.csv')]
+    df_list = [pd.read_csv(os.path.join(folder_path, file)) for file in csv_files]
+    PID_df = pd.concat(df_list, ignore_index=True)
+    PID_df["event_id"] = PID_df["Event#"] % 10**7
+    PID_df["PID"] = PID_df["PID"].astype(int)
+    print("PID_df",PID_df)
+    print("PID only signal", PID_df[PID_df["PID"] == 15]['particle_id']) # this gives real output
     
+    particles_data['particle_id'] = particles_data['particle_id'].astype(int)
+    reconstruct_data['particle_id'] = reconstruct_data['particle_id'].astype(int)
+    print("particles data before merge", particles_data)
+    print("reconstruct data before merge", reconstruct_data)
+
+    reconstruct_data = pd.merge(reconstruct_data, PID_df[['PID','particle_id','event_id']], on=['particle_id','event_id'], how='left')
+    print("reconstruct data", reconstruct_data)
+    print(reconstruct_data['particle_id'].isna().sum()) # zero
+    particles_data = pd.merge(particles_data, PID_df[['PID','particle_id','event_id']], on=['particle_id','event_id'], how='left')
+    print(particles_data['particle_id'].isna().sum()) #zero
+    print("particles data after merge", particles_data)
+    print("unique PIDs",np.unique(particles_data["PID"])) # There is no signal PID, but there is a nan
+    if 15 in np.unique(particles_data["PID"]):
+        print("PID 15 is present in particles_data.")
+        reconstruct_data_signal = reconstruct_data[abs(reconstruct_data["PID"])==15]
+        particles_data_signal = particles_data[abs(particles_data["PID"])==15]
+    else:
+        print("PID 15 is not present in particles_data.")
+        reconstruct_data_signal = reconstruct_data[pd.isna(reconstruct_data["PID"])]
+        particles_data_signal = particles_data[pd.isna(particles_data["PID"])]
+    reconstruct_data_signal.to_csv("./output/test_data.csv")
+    particles_data_signal.to_csv("./output/test_particles.csv")
+
+    n_particles = len(particles.drop_duplicates(subset=['event_id', 'particle_id']))
+    n_particles_signal = len(particles_data_signal.drop_duplicates(subset=['event_id', 'particle_id']))
+    n_reconstructed_particles = len(reconstruct_data_signal.drop_duplicates(subset=['event_id', 'particle_id']))
     n_tracks = len(tracks.drop_duplicates(subset=['event_id', 'track_id']))
+
     n_matched_tracks = len(matched_tracks.drop_duplicates(subset=['event_id', 'track_id']))
     
     n_dup_reconstructed_particles = len(reconstructed_particles) - n_reconstructed_particles
 
     logging.info(headline("b) Calculating the performance metrics"))
     logging.info(f"Number of reconstructed particles: {n_reconstructed_particles}")
-    logging.info(f"Number of particles: {n_particles}")
+    logging.info(f"Number of particles: {n_particles_signal}")
     logging.info(f"Number of matched tracks: {n_matched_tracks}")
     logging.info(f"Number of tracks: {n_tracks}")
     logging.info(f"Number of duplicate reconstructed particles: {n_dup_reconstructed_particles}")   
 
     # Plot the results across pT and eta
-    eff = n_reconstructed_particles / n_particles
+    eff = n_reconstructed_particles / n_particles_signal
+
     fake_rate = 1 - (n_matched_tracks / n_tracks)
     dup_rate = n_dup_reconstructed_particles / n_reconstructed_particles
     
@@ -279,14 +321,17 @@ def evaluate(config_file="pipeline_config.yaml"):
 
     # First get the list of particles without duplicates
     grouped_reco_particles = particles.groupby('particle_id')["is_reconstructed"].any()
-    particles["is_reconstructed"] = particles["particle_id"].isin(grouped_reco_particles[grouped_reco_particles].index.values)
+    #particles["is_reconstructed"] = particles["particle_id"].isin(grouped_reco_particles[grouped_reco_particles].index.values)
     particles = particles.drop_duplicates(subset=['particle_id'])
 
     # Plot the results across pT and eta
     plot_pt_eff(particles)
+    # Plot edgewise eff
+    signal_data = particles_data_signal.drop_duplicates(subset=['event_id', 'particle_id'])
+    plot_edgewise_eff(signal_data)
 
     # TODO: Plot the results
-    return evaluated_events, reconstructed_particles, particles, matched_tracks, tracks, reconstruct_data, particles_data
+    return evaluated_events, reconstructed_particles, particles, matched_tracks, tracks, reconstruct_data_signal, particles_data_signal
 
 if __name__ == "__main__":
 

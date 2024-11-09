@@ -10,6 +10,10 @@ import logging
 logging.basicConfig(level=logging.INFO, format='%(levelname)s:%(message)s')
 import torch
 
+# Set the project root directory
+project_root = "/eos/home-l/lcondren/QuirkTracking-ML"
+sys.path.append(project_root)
+
 sys.path.append("../../")
 
 from Pipelines.TrackML_Example.LightningModules.GNN.Models.interaction_gnn import InteractionGNN

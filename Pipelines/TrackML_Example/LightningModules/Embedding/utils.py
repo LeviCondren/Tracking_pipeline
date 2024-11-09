@@ -6,6 +6,7 @@ from torch.utils.data import random_split
 from torch import nn
 import scipy as sp
 import numpy as np
+from IPython.display import display
 
 """
 Ideally, we would be using FRNN and the GPU. But in the case of a user not having a GPU, or not having FRNN, we import FAISS as the 
@@ -43,7 +44,8 @@ def load_dataset(
 ):
     if input_dir is not None:
         all_events = os.listdir(input_dir)
-        all_events = sorted([os.path.join(input_dir, event) for event in all_events])
+        all_events = sorted(all_events, key = int)
+        all_events = [os.path.join(input_dir, event) for event in all_events]
         loaded_events = []
         for event in all_events[:num]:
             try:
@@ -103,7 +105,7 @@ def split_datasets(
     train_indices = list(range(train_size))
     val_indices = list(range(train_size, train_size + val_size))
     test_indices = list(range(train_size + val_size, total_samples))
-    
+    print(test_indices)
     train_events = [loaded_events[i] for i in train_indices]
     val_events = [loaded_events[i] for i in val_indices]
     test_events = [loaded_events[i] for i in test_indices]
@@ -274,7 +276,11 @@ def build_edges(
     # Reset indices subset to correct global index
     if indices is not None:
         edge_list[0] = indices[edge_list[0]]
-
+    
+    if torch.equal(edge_list[0],edge_list[1]): # this is just a bandaid fix for the issue of self-loops. We randomize the edges. Need to find a better solution
+        indic = torch.randperm(edge_list[1].size(0))
+        edge_list[1] = edge_list[1][indic]        
+    
     # Remove self-loops
     edge_list = edge_list[:, edge_list[0] != edge_list[1]]
 

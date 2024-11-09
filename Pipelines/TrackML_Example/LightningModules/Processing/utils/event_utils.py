@@ -96,9 +96,26 @@ def select_hits(truth, particles, endcaps=False, noise=False, min_pt=None):
         (6),
         (7),
         (8),
-    ]
+        (9),
+        (10),
+        (11),
+        (12),
+        (13),
+        (14),
+        (15),
+        (16),
+        (17),
+        (18),
+        (19),
+        (20),
+        (21),
+        (22),
+        (23),
+        (24),
+        (25)
+            ]
     n_det_layers = len(vlids)
-    # Select barrel layers and assign convenient layer number [0-9]
+    # Select barrel layers and assign convenient layer number [0-25]
     vlid_groups = truth.groupby(["layer_id"])
     truth = pd.concat(
         [vlid_groups.get_group(vlids[i]).assign(layer=i) for i in range(n_det_layers)]

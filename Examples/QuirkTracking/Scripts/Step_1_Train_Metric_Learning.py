@@ -13,6 +13,10 @@ from pytorch_lightning import Trainer
 from pytorch_lightning.loggers import CSVLogger
 import torch
 
+# Set the project root directory
+project_root = "/eos/home-l/lcondren/QuirkTracking-ML"
+sys.path.append(project_root)
+
 sys.path.append("../../")
 
 from Pipelines.TrackML_Example.LightningModules.Embedding.Models.layerless_embedding import LayerlessEmbedding
@@ -58,7 +62,9 @@ def train(config_file="pipeline_config.yaml"):
     logging.info(headline("c) Saving model") )
 
     os.makedirs(save_directory, exist_ok=True)
-    trainer.save_checkpoint(os.path.join(save_directory, common_configs["experiment_name"]+".ckpt"))
+    checkpoint_path = os.path.join(save_directory, common_configs["experiment_name"]+".ckpt")
+    print(f"checkpoint will be saved to: {checkpoint_path}")
+    trainer.save_checkpoint(checkpoint_path)
 
     return trainer, model
 

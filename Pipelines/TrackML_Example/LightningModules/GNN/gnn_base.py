@@ -8,6 +8,8 @@ import torch.nn.functional as F
 from torch_geometric.loader import DataLoader
 from torch.nn import Linear
 import torch
+import numpy as np
+import pandas as pd
 
 from .utils import load_dataset, split_datasets, random_edge_slice_v2
 from sklearn.metrics import roc_auc_score
@@ -21,6 +23,7 @@ class GNNBase(LightningModule):
         """
         # Assign hyperparameters
         self.save_hyperparameters(hparams)
+        self.performance_df = pd.DataFrame(columns=["sample", "loss", "purity", "efficiency"])
 
     def setup(self, stage):
         # Handle any subset of [train, val, test] data split, assuming that ordering
@@ -54,7 +57,7 @@ class GNNBase(LightningModule):
         if ("trainset" not in self.__dict__.keys()) or (self.trainset is None):
             self.setup_data()
 
-        return DataLoader(self.trainset, batch_size=4, num_workers=16)
+        return DataLoader(self.trainset, batch_size=1, num_workers=16)
 
     def val_dataloader(self):
         if self.valset is not None:
@@ -145,6 +148,7 @@ class GNNBase(LightningModule):
 
         self.log("train_loss", loss, on_epoch=True, on_step=False, batch_size=1)
 
+        loss.backward(retain_graph=True)
         return loss
 
     def log_metrics(self, score, preds, truth, batch, loss):
@@ -161,6 +165,25 @@ class GNNBase(LightningModule):
         #print("edge_true_positive:", edge_true_positive)
         #print("edge_positive:", edge_positive)
         #auc = roc_auc_score(truth.bool().cpu().detach(), score.cpu().detach()) 
+
+
+        # print("called log_metrics")
+        # num_events = np.sum(self.hparams["datatype_split"])
+        # print("num_events:", num_events)
+        # sample_index = batch["pid"][0].item()
+        # new_data = pd.DataFrame([{
+        #     "sample":sample_index,
+        #     "loss": loss,
+        #     "purity": pur,
+        #     "efficiency": eff
+        # }])
+        # if sample_index == num_events:
+        #     file_number = len(os.listdir("Performance/GNN")) + 1
+        #     file_path = os.path.join("Performance/GNN", str(file_number))
+        #     self.performance_df.to_csv(file_path + ".csv")
+        # torch.cuda.empty_cache()
+        # self.performance_df = pd.concat([self.performance_df, new_data], ignore_index = True)
+
         try:
             auc = roc_auc_score(truth.bool().cpu().detach(), score.cpu().detach())
             current_lr = self.optimizers().param_groups[0]["lr"]
@@ -222,6 +245,8 @@ class GNNBase(LightningModule):
         # Edge filter performance
         score = torch.sigmoid(output)
         preds = score > self.hparams["edge_cut"]
+        print(score)
+        #print("max scores",max(score),"min scores", min(score))
 
         if log:
             self.log_metrics(score, preds, truth_sample, batch, loss)

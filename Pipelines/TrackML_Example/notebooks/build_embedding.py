@@ -6,6 +6,7 @@ import numpy as np
 import random
 import torch
 from tqdm import tqdm
+import pandas as pd
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
@@ -23,6 +24,7 @@ class EmbeddingInferenceBuilder:
         single_file_split = [1, 1, 1]
         model.hparams["train_split"] = single_file_split
         model.setup(stage="fit")
+        self.performance_df = pd.DataFrame(columns=["sample", "loss", "purity", "efficiency"])
         
 
     def build(self):
@@ -100,7 +102,25 @@ class EmbeddingInferenceBuilder:
     def get_performance(self, batch, r_max, k_max):
         with torch.no_grad():
             results = self.model.shared_evaluation(batch, 0, r_max, k_max)
+        #sample_index = batch["pid"][0].item()
+        sample_index = int(batch["event_file"][-9:]) - 100000000
+        loss = results["loss"].cpu().item()
+        purity = results["pur"].cpu().item()
+        efficiency = results["eff"].cpu().item()
+        new_data = pd.DataFrame([{
+            "sample":sample_index,
+            "loss": loss,
+            "purity": purity,
+            "efficiency": efficiency
+        }])
+        self.performance_df = pd.concat([self.performance_df, new_data], ignore_index = True)
 
+        if sample_index == np.sum(self.split):
+            print("Saving performance metrics...")
+            file_number = len(os.listdir("Performance/Metric_learning")) + 1
+            file_path = os.path.join("Performance/Metric_learning", str(file_number))
+            self.performance_df.to_csv(file_path + ".csv")
+        torch.cuda.empty_cache()
         return results["truth"], results["preds"], results["truth_graph"]
 
     def save_downstream(self, batch, datatype):

@@ -13,6 +13,10 @@ import torch.nn as nn
 from tqdm import tqdm
 from tqdm.contrib.concurrent import process_map
 
+# # Set the project root directory
+# project_root = "/eos/home-l/lcondren/QuirkTracking-ML"
+# sys.path.append(project_root)
+
 # Local imports
 sys.path.append("../../")
 #from Pipelines.TrackML_Example.LightningModules.Embedding.Models.layerless_embedding import LayerlessEmbedding
@@ -90,9 +94,9 @@ class QuirkFeatureStore(FeatureStoreBase):
 
 def main():
     hparams = {
-        "input_dir": "datasets/Lambda500_quirk/Quirk",
-        "output_dir": "datasets/Lambda500_quirk/feature_store/QuirkTracking_sample",
-        "n_files": "10000",
+        "input_dir": "Examples/QuirkTracking/Scripts/Train_SM_test_mix_split_1500_500_FDim_2",
+        "output_dir": "Examples/QuirkTracking/Scripts/Tracks_output",
+        "n_files": "2000",
         "n_tasks": "1",
         #"n_workers": "0",
         # Other hparams if needed

@@ -171,3 +171,15 @@ def plot_pt_eff(particles):
 
     # Save the plot
     fig.savefig('pt_efficiency.png')
+
+
+def plot_edgewise_eff(df):
+    values = df['eff_true']
+
+    plt.figure(figsize=(8, 6))
+    plt.hist(values, bins=20, color='blue', edgecolor='black', alpha=0.7)
+    plt.title('Signal Edgewise Efficiency')
+    plt.xlabel('efficiency')
+    plt.ylabel('Frequency')
+    plt.grid(True)
+    plt.savefig('edgewise_eff.png')

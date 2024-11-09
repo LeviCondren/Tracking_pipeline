@@ -12,6 +12,10 @@ logging.basicConfig(level=logging.INFO, format='%(levelname)s:%(message)s')
 from pytorch_lightning import Trainer
 from pytorch_lightning.loggers import CSVLogger
 
+# Set the project root directory
+project_root = "/eos/home-l/lcondren/QuirkTracking-ML"
+sys.path.append(project_root)
+
 sys.path.append("../../")
 
 from Pipelines.TrackML_Example.LightningModules.GNN.Models.interaction_gnn import InteractionGNN
@@ -21,11 +25,11 @@ def parse_args():
     """Parse command line arguments."""
     parser = argparse.ArgumentParser("3_Train_GNN.py")
     add_arg = parser.add_argument
-    add_arg("config", nargs="?", default="pipeline_config_quirk.yaml")
+    add_arg("config", nargs="?", default="pipeline_config.yaml")
     return parser.parse_args()
 
 
-def train(config_file="pipeline_config_quirk.yaml"):
+def train(config_file="pipeline_config.yaml"):
 
     logging.info(headline(" Step 3: Running GNN training "))
 

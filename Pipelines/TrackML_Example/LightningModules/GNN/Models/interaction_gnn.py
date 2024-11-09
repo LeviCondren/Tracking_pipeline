@@ -70,6 +70,8 @@ class InteractionGNN(GNNBase):
             output_activation=None,
             hidden_activation=hparams["hidden_activation"],
         )
+        for param in self.parameters():
+            param.requires_grad = True
 
     def reset_parameters(self):
 

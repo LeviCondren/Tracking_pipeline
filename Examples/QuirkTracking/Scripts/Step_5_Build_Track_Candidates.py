@@ -16,6 +16,10 @@ from tqdm.contrib.concurrent import process_map
 from tqdm import tqdm
 from functools import partial
 
+# Set the project root directory
+project_root = "/eos/home-l/lcondren/QuirkTracking-ML"
+sys.path.append(project_root)
+
 from utils.convenience_utils import headline, delete_directory
 
 sys.path.append("../../")
@@ -31,7 +35,7 @@ def parse_args():
 def label_graph(graph, score_cut=0.8, save_dir="datasets/quickstart_track_building_processed"):
 
     os.makedirs(save_dir, exist_ok=True)
-
+    print("max event score", max(graph.scores), "min event score",min(graph.scores))
     edge_mask = graph.scores > score_cut
 
     row, col = graph.edge_index[:, edge_mask]
