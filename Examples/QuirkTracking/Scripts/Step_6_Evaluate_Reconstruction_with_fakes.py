@@ -18,7 +18,7 @@ from tqdm import tqdm
 from functools import partial
 
 # Set the project root directory
-project_root = "/global/homes/l/lcondren/pipeline_copy"
+project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.append(project_root)
 
 sys.path.append("../../")
