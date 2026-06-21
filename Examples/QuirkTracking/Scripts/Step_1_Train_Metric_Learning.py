@@ -18,7 +18,7 @@ import signal
 CONFIG = os.getenv('CONFIG', 'default_value4')
 
 # Set the project root directory
-project_root = "/global/homes/l/lcondren/pipeline_copy"
+project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.append(project_root)
 
 CONFIG = os.path.join(project_root, CONFIG)
@@ -118,4 +118,3 @@ if __name__ == "__main__":
     config_file = args.config
 
     trainer, model = train(config_file)    
-
