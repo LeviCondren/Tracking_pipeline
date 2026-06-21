@@ -22,7 +22,7 @@ TESTSIZE = int(os.getenv('TESTSIZE'))
 # TESTSIZE = 4000
 
 # Set the project root directory
-project_root = "/global/homes/l/lcondren/pipeline_copy"
+project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.append(project_root)
 
 # Local imports
