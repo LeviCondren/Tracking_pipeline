@@ -26,6 +26,16 @@ import numpy as np
 # Local Imports
 from .utils import graph_intersection, split_datasets, build_edges
 
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    filename="debug_log.txt",  # Output file for logging
+    filemode="w"
+)
+
+logging.info("Debugging DataLoader: Checking if it prints.")
+
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
 

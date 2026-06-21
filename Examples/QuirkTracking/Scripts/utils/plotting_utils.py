@@ -1,6 +1,6 @@
 import os
 from functools import partial
-
+import re
 import math
 import numpy as np
 import pandas as pd
@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 from matplotlib.ticker import AutoMinorLocator
 import itertools
 
+FILENAME = os.getenv('FILENAME', 'default_value1')
 
 fontsize=16
 minor_size=14
@@ -182,4 +183,70 @@ def plot_edgewise_eff(df):
     plt.xlabel('efficiency')
     plt.ylabel('Frequency')
     plt.grid(True)
-    plt.savefig('edgewise_eff.png')
+    plt.savefig(os.path.join('/pscratch/sd/l/lcondren/edgewise_eff_plots', f"{FILENAME}.png")) # variable location 6
+
+def plot_eff_vs_num_hits(df1, df2):
+   # Bin size
+    bin_size = 1
+
+    # Get counts of 'n_true_hits' for each DataFrame
+    df1_counts = df1['n_true_hits'].value_counts().sort_index()
+    df2_counts = df2['n_true_hits'].value_counts().sort_index()
+
+    # Align the counts by index and compute the ratio
+    combined_counts = pd.DataFrame({'df1_counts': df1_counts, 'df2_counts': df2_counts}).fillna(0)
+    combined_counts['ratio'] = combined_counts['df1_counts'] / combined_counts['df2_counts']
+    combined_counts.replace([np.inf, -np.inf], np.nan, inplace=True)  # Handle divide by zero
+    combined_counts.dropna(inplace=True)
+
+    # Bin the ratios
+    combined_counts['bin'] = pd.cut(combined_counts.index, bins=range(22, combined_counts.index.max() + bin_size, bin_size), right=False)
+
+    # Calculate mean and standard deviation of the ratio for each bin
+    bin_means = []
+    bin_std_devs = []
+    bin_labels = []
+
+    for interval, group in combined_counts.groupby('bin'):
+        bin_labels.append(int(interval.left))
+        bin_means.append(group['ratio'].mean())
+        bin_std_devs.append(group['ratio'].std())
+
+    # Plotting
+    fig, ax = plt.subplots(figsize=(12, 6))
+
+    # Create the error bar plot
+    ax.errorbar(
+        bin_labels,
+        bin_means,
+        yerr=bin_std_devs,
+        xerr=bin_size / 2,
+        fmt='o',  # Circle markers
+        color='black',
+        ecolor='gray',
+        elinewidth=2,
+        capsize=3
+    )
+    train_test = list(map(int,re.findall(r'\d+',FILENAME)))
+    # Customize the plot
+    ax.set_xticks(bin_labels[::8])
+    ax.set_xticklabels(bin_labels[::8], ha='center')
+    ax.set_title(f'Quirk Efficiency Versus Number of Hits', fontsize = 20)
+    ax.set_xlabel('Hits', fontsize = 20)
+    ax.set_ylabel('Efficiency', fontsize = 20)
+
+    
+    plt.savefig(os.path.join('/global/homes/l/lcondren/pipeline_copy/hits_vs_eff_corrected', f"{FILENAME}.png"))
+
+
+def histogram(data):
+
+    # Plot the histogram
+    plt.hist(data, bins=100, edgecolor='black')
+    plt.xlim(0,100)
+    # Customize the plot
+    plt.title('Fake Hit Multiplicity', fontsize = 20)
+    plt.xlabel('Hits', fontsize = 20)
+    plt.ylabel('Count', fontsize = 20)
+    plt.savefig(os.path.join('/global/homes/l/lcondren/pipeline_copy/fake_hit_multiplicity', f"{FILENAME}.png"))
+    np.save(os.path.join('/global/homes/l/lcondren/pipeline_copy/fake_hit_multiplicity', f"{FILENAME}.npy"),data)

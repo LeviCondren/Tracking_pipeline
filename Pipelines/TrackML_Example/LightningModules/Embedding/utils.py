@@ -51,7 +51,7 @@ def load_dataset(
             try:
                 loaded_event = torch.load(event, map_location=torch.device("cpu"))
                 loaded_event.event_file = event
-                loaded_events.append(loaded_event)                
+                loaded_events.append(loaded_event)              
             except:
                 logging.info("Corrupted event file: {}".format(event))
         loaded_events = select_data(
@@ -105,7 +105,8 @@ def split_datasets(
     train_indices = list(range(train_size))
     val_indices = list(range(train_size, train_size + val_size))
     test_indices = list(range(train_size + val_size, total_samples))
-    print(test_indices)
+    # print("test indices:", test_indices)
+    # print("train indices:", train_indices)
     train_events = [loaded_events[i] for i in train_indices]
     val_events = [loaded_events[i] for i in val_indices]
     test_events = [loaded_events[i] for i in test_indices]
@@ -124,7 +125,8 @@ def get_edge_subset(edges, mask_where, inverse_mask):
 
 def select_data(
     events, pt_background_cut, pt_signal_cut, nhits_min, primary_only, true_edges, noise
-):
+):  
+    print("number of events pre selection:", len(events))
     # Handle event in batched form
     if type(events) is not list:
         events = [events]

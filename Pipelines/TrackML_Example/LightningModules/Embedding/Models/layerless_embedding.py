@@ -25,6 +25,8 @@ class LayerlessEmbedding(EmbeddingBase):
         Initialise the Lightning Module that can scan over different embedding training regimes
         """
         # Construct the MLP architecture
+        print(f"EmbeddingBase is imported from: {os.path.abspath(EmbeddingBase.__module__.replace('.', '/') + '.py')}")
+
         in_channels = hparams["spatial_channels"] + hparams["cell_channels"]
 
         self.network = make_mlp(

@@ -4,6 +4,7 @@ This script runs step 6 of the TrackML Quickstart example: Evaluating the track 
 
 import sys
 import os
+import re
 import yaml
 import argparse
 import logging
@@ -11,16 +12,30 @@ import torch
 import numpy as np
 import pandas as pd
 import scipy.sparse as sps
+from scipy.stats import wasserstein_distance
 import matplotlib.pyplot as plt
 
 from tqdm.contrib.concurrent import process_map
 from tqdm import tqdm
 from functools import partial
 
+# Set the project root directory
+project_root = "/global/homes/l/lcondren/pipeline_copy"
+sys.path.append(project_root)
+
+sys.path.append("../../")
 
 from utils.convenience_utils import headline
-from utils.plotting_utils import plot_pt_eff, plot_edgewise_eff
+from utils.plotting_utils import plot_pt_eff, plot_edgewise_eff, plot_eff_vs_num_hits, histogram
 
+FILENAME = os.getenv('FILENAME', 'default_value1')
+CONFIG = os.getenv('CONFIG', 'default_value4')
+TESTSIZE = int(os.getenv('TESTSIZE', '0'))
+TRAINSIZE = int(os.getenv('TRAINSIZE', '0'))
+
+# fake_hit_multiplicity = []
+# sm_hit_multiplicity = []
+# signal_hit_multiplicity = []
 # Set up logging configuration
 logging.basicConfig(level=logging.INFO,  # Set the logging level to INFO (you can use DEBUG for more verbosity)
                     format='%(asctime)s - %(levelname)s - %(message)s',  # Define the output format
@@ -30,7 +45,7 @@ def parse_args():
     """Parse command line arguments."""
     parser = argparse.ArgumentParser("5_Build_Track_Candidates.py")
     add_arg = parser.add_argument
-    add_arg("config", nargs="?", default="pipeline_config.yaml")
+    add_arg("config", nargs="?", default=CONFIG)
     return parser.parse_args()
 
 
@@ -47,7 +62,7 @@ def conformal_mapping(file):
     tid = graph.labels
     pid = graph.pid
     true_pt = graph.pt
-    event_file = int(graph.event_file[-4:])
+    event_file = int(graph.event_file[-6:])
 
     """
     x, y, z: np.array([])
@@ -113,7 +128,7 @@ def load_reconstruction_df(file):
     """Load the reconstructed tracks from a file."""
     graph = torch.load(file, map_location="cpu")
     reconstruction_df = pd.DataFrame({"hit_id": graph.hid, "track_id": graph.labels, "particle_id": graph.pid})
-    #print(reconstruction_df)
+
     return reconstruction_df
 
 def load_particles_df(file):
@@ -125,7 +140,7 @@ def load_particles_df(file):
 
     # Reduce to only unique particle_ids
     particles_df = particles_df.drop_duplicates(subset=['particle_id'])
-    #print(particles_df)
+
     return particles_df
 
 def get_matching_df(reconstruction_df, particles_df, min_track_length=1, min_particle_length=1):
@@ -151,7 +166,20 @@ def get_matching_df(reconstruction_df, particles_df, min_track_length=1, min_par
     spacepoint_matching["is_matchable"] = spacepoint_matching.n_reco_hits >= min_track_length
     spacepoint_matching["is_reconstructable"] = spacepoint_matching.n_true_hits >= min_particle_length
     spacepoint_matching["is_catchable"] = spacepoint_matching.n_true_hits - spacepoint_matching.n_reco_hits  <= 5
-    
+
+    # spacepoint_matching_fakes = spacepoint_matching[spacepoint_matching["is_matchable"] == True]
+    # mask = (spacepoint_matching_fakes["n_shared"] >= 0.5 * spacepoint_matching_fakes["n_true_hits"])
+
+    # # Filter the non-fake track IDs and create a mask to keep only unmatched entries
+    # valid_tracks_mask = ~spacepoint_matching["track_id"].isin(spacepoint_matching_fakes.loc[mask, "track_id"])
+
+    # # Apply the mask and filter by n_reco_hits threshold
+    # filtered_fakes = spacepoint_matching[valid_tracks_mask & (spacepoint_matching["n_reco_hits"] >= min_particle_length)]
+
+    # valid_n_reco_hits = filtered_fakes["n_reco_hits"].tolist()
+    # fake_hit_multiplicity.extend(valid_n_reco_hits)
+    # print("Filtered Fake Hits", valid_n_reco_hits)
+
     return spacepoint_matching
 
 def calculate_matching_fraction(spacepoint_matching_df):
@@ -174,7 +202,8 @@ def evaluate_labelled_graph(graph_file, matching_fraction=0.5, matching_style="A
     # Load the labelled graphs as reconstructed dataframes
     reconstruction_df = load_reconstruction_df(graph_file)
     particles_df = load_particles_df(graph_file)
-
+    # print("particles_df", particles_df)
+    # print("reco data", reconstruction_df)
     #print("--------------------------reconstruction_df----------------------------")
     #print(reconstruction_df)
     #print("--------------------------particle_df----------------------------")
@@ -204,7 +233,7 @@ def evaluate_labelled_graph(graph_file, matching_fraction=0.5, matching_style="A
     #    print(particles_df)
     return matching_df
 
-def evaluate(config_file="pipeline_config.yaml"):
+def evaluate(config_file=CONFIG):
 
     logging.info(headline("Step 6: Evaluating the track reconstruction performance"))
 
@@ -221,32 +250,47 @@ def evaluate(config_file="pipeline_config.yaml"):
     output_dir = evaluation_configs["output_dir"]
     os.makedirs(output_dir, exist_ok=True)
 
-    all_graph_files = os.listdir(input_dir)
-    all_graph_files = [os.path.join(input_dir, graph) for graph in all_graph_files]
+    all_graph_files = os.listdir(input_dir)  #original line 1
+    #print("all files before sort",all_graph_files[(TRAINSIZE + 900):])
+    all_graph_files = [file for file in os.listdir(input_dir) if file.isdigit() and int(file) > TRAINSIZE]
+    #all_graph_files = sorted(all_graph_files, key=lambda x: int(x.strip('"')))
+    #print("all files after sort",all_graph_files)
+    all_graph_files = [os.path.join(input_dir, graph) for graph in all_graph_files]#[TRAINSIZE:] #original line 2
+    #all_graph_files = [os.path.join(input_dir, graph) for graph in all_graph_files][5000:]
+
 
     evaluated_events = []
     events_parameters_track = []
     reconstruction_hit = []
     for graph_file in tqdm(all_graph_files):
-        evaluated_events.append(evaluate_labelled_graph(graph_file, 
-                                matching_fraction=evaluation_configs["matching_fraction"], 
-                                matching_style=evaluation_configs["matching_style"],
-                                min_track_length=evaluation_configs["min_track_length"],
-                                min_particle_length=evaluation_configs["min_particle_length"]))
-        events_parameters_track.append(conformal_mapping(graph_file))
+
+        try:
+            evaluated_events.append(evaluate_labelled_graph(graph_file, 
+                                    matching_fraction=evaluation_configs["matching_fraction"], 
+                                    matching_style=evaluation_configs["matching_style"],
+                                    min_track_length=evaluation_configs["min_track_length"],
+                                    min_particle_length=evaluation_configs["min_particle_length"]))
+            events_parameters_track.append(conformal_mapping(graph_file))
+        except Exception as e:
+            print(f"Skipping file {graph_file} due to error: {e}")
+            continue
+
     evaluated_events = pd.concat(evaluated_events)
     events_parameters_track = pd.concat(events_parameters_track)
-
+    # with pd.option_context('display.max_columns', None):
+    #     print("events parameters track",events_parameters_track)
     particles = evaluated_events[evaluated_events["is_reconstructable"]]
     #reconstructed_particles = particles[particles["is_reconstructed"] & particles["is_matchable"] & particles["is_catchable"]]
 
     #With reconstructed
     reconstructed_particles = particles[particles["is_reconstructed"] & particles["is_matchable"] ]
+    # with pd.option_context('display.max_columns', None):
+    #print("reconstructed particles", reconstructed_particles)
     #reconstruct_data = reconstructed_particles
     reconstruct_data = pd.merge(reconstructed_particles, events_parameters_track, on=["track_id", "particle_id", "event_id"])
     columns_to_drop = ["is_reconstructable", "is_matchable","is_catchable","is_matched","is_reconstructed"]
     reconstruct_data = reconstruct_data.drop(columns=columns_to_drop)
-    reconstruct_data.to_csv("./output/test_bkg_and_signal.csv", index=False)
+    #reconstruct_data.to_csv("./output/test_bkg_and_signal.csv", index=False)
     #reconstruct_data.to_csv("./output/mix/track_mix_quirk_sel_2000_1800.csv", index=False)
    
     #Without reconstructed
@@ -259,27 +303,45 @@ def evaluate(config_file="pipeline_config.yaml"):
     matched_tracks = tracks[tracks["is_matched"]]
 
 
-    folder_path = "Examples/QuirkTracking/Scripts/combined_bkg_signal_added"
+    folder_path = os.path.join("/pscratch/sd/l/lcondren/combined_hit_particle_files", FILENAME) # variable location 7
     csv_files = [file for file in os.listdir(folder_path) if file.endswith('-particles.csv')]
     df_list = [pd.read_csv(os.path.join(folder_path, file)) for file in csv_files]
     PID_df = pd.concat(df_list, ignore_index=True)
     PID_df["event_id"] = PID_df["Event#"] % 10**7
     PID_df["PID"] = PID_df["PID"].astype(int)
-    print("PID_df",PID_df)
-    print("PID only signal", PID_df[PID_df["PID"] == 15]['particle_id']) # this gives real output
+    #print("PID_df",PID_df)
+    #print("PID only signal", PID_df[PID_df["PID"] == 15]['particle_id']) # this gives real output
     
     particles_data['particle_id'] = particles_data['particle_id'].astype(int)
     reconstruct_data['particle_id'] = reconstruct_data['particle_id'].astype(int)
-    print("particles data before merge", particles_data)
-    print("reconstruct data before merge", reconstruct_data)
+
+
 
     reconstruct_data = pd.merge(reconstruct_data, PID_df[['PID','particle_id','event_id']], on=['particle_id','event_id'], how='left')
-    print("reconstruct data", reconstruct_data)
-    print(reconstruct_data['particle_id'].isna().sum()) # zero
+    reconstruct_data['particle_id'] = reconstruct_data['particle_id'].astype(int)
+    #print("reconstruct data", reconstruct_data)
+    #print(reconstruct_data['particle_id'].isna().sum()) # zero
     particles_data = pd.merge(particles_data, PID_df[['PID','particle_id','event_id']], on=['particle_id','event_id'], how='left')
-    print(particles_data['particle_id'].isna().sum()) #zero
-    print("particles data after merge", particles_data)
-    print("unique PIDs",np.unique(particles_data["PID"])) # There is no signal PID, but there is a nan
+    #print(particles_data['particle_id'].isna().sum()) #zero
+    #print("particles data after merge", particles_data)
+    #print("unique PIDs, counts",np.unique(particles_data["PID"], return_counts=True)) # There is no signal PID, no Nans either
+    #print("reconstruct data", reconstruct_data)
+    #train_test = list(map(int,re.findall(r'\d+',FILENAME)))
+    reconstruct_data_signal = reconstruct_data[abs(reconstruct_data["PID"])==15]
+    print("reconstruct data signal", reconstruct_data_signal.columns)
+    print("particles data", particles_data.columns)
+
+    reconstruct_data_signal.to_csv(os.path.join('/pscratch/sd/l/lcondren/tracks_for_Daniel',f'Train_SM+Schwartz_Set_19_Test_quirks_new.csv'))
+
+    #the following lines are left over from when I found fake hit multiplicity
+    # sm_reco_data = reconstruct_data[reconstruct_data["PID"] != 15]
+    # print("sm reco data",sm_reco_data) 
+    # sm_hit_multiplicity.extend(sm_reco_data['n_reco_hits'].tolist())
+
+    # signal_reco_data = reconstruct_data[reconstruct_data["PID"] == 15]
+    # print("signal reco data",signal_reco_data) 
+    # signal_hit_multiplicity.extend(signal_reco_data['n_reco_hits'].tolist())
+
     if 15 in np.unique(particles_data["PID"]):
         print("PID 15 is present in particles_data.")
         reconstruct_data_signal = reconstruct_data[abs(reconstruct_data["PID"])==15]
@@ -288,10 +350,25 @@ def evaluate(config_file="pipeline_config.yaml"):
         print("PID 15 is not present in particles_data.")
         reconstruct_data_signal = reconstruct_data[pd.isna(reconstruct_data["PID"])]
         particles_data_signal = particles_data[pd.isna(particles_data["PID"])]
-    reconstruct_data_signal.to_csv("./output/test_data.csv")
-    particles_data_signal.to_csv("./output/test_particles.csv")
+        #print("particles_data_signal",particles_data_signal)
+    # reconstruct_data_signal.to_csv("./output/test_data.csv")
+    # particles_data_signal.to_csv("./output/test_particles.csv")
 
     n_particles = len(particles.drop_duplicates(subset=['event_id', 'particle_id']))
+    reconstruct_data_signal = reconstruct_data_signal[reconstruct_data_signal['event_id'] > TRAINSIZE]
+    
+    #Here make a list of all the event_ids present in reconstruct_data_signal 
+    reco_event_ids = reconstruct_data_signal['event_id'].tolist()
+    for id in reco_event_ids:
+        file_name = f'event1000{int(id)}-params.csv'
+        file_path = os.path.join('/pscratch/sd/l/lcondren/combined_hit_particle_files/quirks_with_params', file_name)
+        file_name_new = f'event1000{int(id)}-params_new.csv'
+        file_path_new = os.path.join('/pscratch/sd/l/lcondren/combined_hit_particle_files/quirks_with_params', file_name_new)
+        df = pd.read_csv(file_path)
+        df['matched'] = True
+        df.to_csv(file_path_new)
+
+    particles_data_signal = particles_data_signal[particles_data_signal['event_id'] > TRAINSIZE]
     n_particles_signal = len(particles_data_signal.drop_duplicates(subset=['event_id', 'particle_id']))
     n_reconstructed_particles = len(reconstruct_data_signal.drop_duplicates(subset=['event_id', 'particle_id']))
     n_tracks = len(tracks.drop_duplicates(subset=['event_id', 'track_id']))
@@ -317,6 +394,15 @@ def evaluate(config_file="pipeline_config.yaml"):
     logging.info(f"Fake rate: {fake_rate:.3f}")
     logging.info(f"Duplication rate: {dup_rate:.3f}")
 
+    # weights1 = np.array(fake_hit_multiplicity) / len(fake_hit_multiplicity)
+    # weights2 = np.array(sm_hit_multiplicity) / len(sm_hit_multiplicity)
+    # weights3 = np.array(signal_hit_multiplicity) / len(signal_hit_multiplicity)
+    # # Compute EMD (weighted version)
+    # emd1 = wasserstein_distance(range(len(fake_hit_multiplicity)), range(len(sm_hit_multiplicity)), u_weights=weights1, v_weights=weights2)
+    # emd2 = wasserstein_distance(range(len(fake_hreconstruct_data_signalit_multiplicity)), range(len(signal_hit_multiplicity)), u_weights=weights1, v_weights=weights3)
+    # print(f"Normalized Earth Mover's Distance between sm and fakes: {emd1}")
+    # print(f"Normalized Earth Mover's Distance between signal and fakes: {emd2}")
+
     logging.info(headline("c) Plotting results"))
 
     # First get the list of particles without duplicates
@@ -325,10 +411,21 @@ def evaluate(config_file="pipeline_config.yaml"):
     particles = particles.drop_duplicates(subset=['particle_id'])
 
     # Plot the results across pT and eta
-    plot_pt_eff(particles)
+    #plot_pt_eff(particles)
     # Plot edgewise eff
+    
+    # print("how many events are there with id over TRAINSIZE:" , particles_data_signal[particles_data_signal['event_id'] > TRAINSIZE].value_counts())
+    # print("PID val counts",particles_data_signal['PID'].value_counts() )
+    particles_data_signal = particles_data_signal[particles_data_signal['event_id'] > TRAINSIZE]
+
     signal_data = particles_data_signal.drop_duplicates(subset=['event_id', 'particle_id'])
-    plot_edgewise_eff(signal_data)
+    reco_signal = reconstruct_data_signal.drop_duplicates(subset=['event_id', 'particle_id'])
+    # with pd.option_context('display.max_columns', None):
+    #     print("reco_signal", reco_signal)
+
+    #histogram(fake_hit_multiplicity)
+    plot_eff_vs_num_hits(reco_signal, signal_data)
+    #plot_edgewise_eff(signal_data)
 
     # TODO: Plot the results
     return evaluated_events, reconstructed_particles, particles, matched_tracks, tracks, reconstruct_data_signal, particles_data_signal

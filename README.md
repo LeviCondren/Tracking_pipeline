@@ -1,33 +1,193 @@
 <div align="center">
 
-# Tracking with ML
+# Quirk Tracking Pipeline
 
-<figure>
-    <img src="https://raw.githubusercontent.com/HSF-reco-and-software-triggers/Tracking-ML-Exa.TrkX/master/docs/media/final_wide.png" width="250"/>
-</figure>
-    
-### Exa.TrkX Collaboration
-
-
-[Documentation](https://hsf-reco-and-software-triggers.github.io/Tracking-ML-Exa.TrkX/)
-
-[![make_docs](https://github.com/HSF-reco-and-software-triggers/Tracking-ML-Exa.TrkX/actions/workflows/make_docs.yml/badge.svg)](https://github.com/HSF-reco-and-software-triggers/Tracking-ML-Exa.TrkX/actions/workflows/make_docs.yml) [![ci](https://github.com/HSF-reco-and-software-triggers/Tracking-ML-Exa.TrkX/actions/workflows/ci.yml/badge.svg)](https://github.com/HSF-reco-and-software-triggers/Tracking-ML-Exa.TrkX/actions/workflows/ci.yml) [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black) [![Lint](https://github.com/HSF-reco-and-software-triggers/Tracking-ML-Exa.TrkX/actions/workflows/black.yml/badge.svg)](https://github.com/HSF-reco-and-software-triggers/Tracking-ML-Exa.TrkX/actions/workflows/black.yml)
-
+A machine-learning track reconstruction pipeline for long-lived exotic particles ("quirks") at the LHC, built on the [ExaTrkX](https://github.com/HSF-reco-and-software-triggers/Tracking-ML-Exa.TrkX) framework.
 
 </div>
 
-Welcome to repository and documentation for ML pipelines and techniques by the ExatrkX Collaboration. 
+## Overview
 
-## Objectives
+This pipeline reconstructs tracks for quirk-like BSM particles using two sequential ML models:
 
-1. To present the ExaTrkX Project pipeline for track reconstruction of TrackML and ITk data in a clear and simple way
-2. To present a set of templates, best practices and results gathered from significant trial and error, to speed up the development of others in the domain of machine learning for high energy physics. We focus on applications specific to detector physics, but many tools can be applied to other areas, and these are collected in an application-agnostic way in the [Tools](https://hsf-reco-and-software-triggers.github.io/Tracking-ML-Exa.TrkX/tools/overview/) section.
+1. **Metric Learning** (embedding network) — maps hits into a latent space where nearby points likely belong to the same track
+2. **Graph Neural Network (GNN)** — classifies edges in the constructed graph as signal or background
 
-## Intro
+Pre-trained weights for the `Lambda500_pre_selection_quirk` run are included under `artifacts/`.
 
-To start as quickly as possible, clone the repository, [Install](https://hsf-reco-and-software-triggers.github.io/Tracking-ML-Exa.TrkX/#install) and follow the steps in [Quickstart](https://hsf-reco-and-software-triggers.github.io/Tracking-ML-Exa.TrkX/pipelines/quickstart). This will get you generating toy tracking data and running inference immediately. Many of the choices of structure will be made clear there. If you already have a particle physics problem in mind, you can apply the [Template](https://hsf-reco-and-software-triggers.github.io/Tracking-ML-Exa.TrkX/pipelines/choosingguide.md) that is most suitable to your use case.
+---
 
-Once up and running, you may want to consider more complex ML [Models](https://hsf-reco-and-software-triggers.github.io/Tracking-ML-Exa.TrkX/models/overview/). Many of these are built on other libraries (for example [Pytorch Geometric](https://github.com/rusty1s/pytorch_geometric)).
+## Repository Structure
+
+```
+Examples/QuirkTracking/Scripts/   # Main pipeline scripts (Steps 0–6)
+  Step_0_dataset.py               # Preprocessing raw hits into feature store
+  Step_1_Train_Metric_Learning.py # Train the embedding model
+  Step_2_Run_Metric_Learning.py   # Run embedding inference to build graphs
+  Step_3_Train_GNN.py             # Train the GNN
+  Step_4_Run_GNN.py               # Run GNN inference to score edges
+  Step_5_Build_Track_Candidates.py# Connected-components track building
+  Step_6_Evaluate_Reconstruction.py# Evaluation and efficiency metrics
+  utils/                          # Shared utility functions
+
+Pipelines/TrackML_Example/        # Core Lightning modules (embedding, GNN, processing)
+Architectures/                    # Standalone model architecture definitions
+artifacts/Lambda500_pre_selection_quirk/
+  metric_learning/quirk.ckpt      # Pre-trained embedding model (~49 MB)
+  gnn/quirk.ckpt                  # Pre-trained GNN (~1.5 MB)
+```
+
+---
+
+## Installation
+
+Requires Python 3.9 and CUDA 11.3 (GPU) or CPU-only.
+
+**GPU:**
+```bash
+conda env create -f gpu_environment.yml python=3.9
+conda activate exatrkx-gpu
+pip install -e .
+```
+
+**CPU only:**
+```bash
+conda env create -f cpu_environment.yml python=3.9
+conda activate exatrkx-cpu
+pip install -e .
+```
+
+---
+
+## Configuration
+
+Each step reads a single YAML config file. Create one with the following structure (paths must be absolute):
+
+```yaml
+common_configs:
+  experiment_name: quirk
+  artifact_directory: /path/to/your/artifacts/run_name
+  gpus: 1
+  clear_directories: False          # set True to wipe intermediate dirs between runs
+
+metric_learning_configs:
+  input_dir: /path/to/feature_store/run_name
+  output_dir: /path/to/metric_learning_processed/run_name
+  pt_signal_cut: 0.
+  pt_background_cut: 0.
+  train_split: [65000, 100, 3900]
+  true_edges: modulewise_true_edges
+  spatial_channels: 3
+  cell_channels: 0
+  emb_hidden: 1024
+  nb_layer: 4
+  emb_dim: 12
+  activation: Tanh
+  weight: 2
+  randomisation: 2
+  points_per_batch: 100000
+  r_train: 0.1
+  r_val: 0.1
+  r_test: 0.1
+  knn: 50
+  warmup: 8
+  margin: 0.1
+  lr: 0.001
+  factor: 0.7
+  patience: 4
+  regime: [rp, hnm, norm]
+  max_epochs: 5
+
+gnn_configs:
+  input_dir: /path/to/metric_learning_processed/run_name
+  output_dir: /path/to/gnn_processed/run_name
+  edge_cut: 0.5
+  pt_signal_min: 0.
+  pt_background_min: 0.
+  datatype_names: [train, val, test]
+  datatype_split: [65000, 100, 3900]
+  noise: False
+  spatial_channels: 3
+  cell_channels: 0
+  hidden: 64
+  n_graph_iters: 8
+  nb_node_layer: 3
+  nb_edge_layer: 3
+  layernorm: True
+  aggregation: sum_max
+  hidden_activation: SiLU
+  weight: 1
+  warmup: 20
+  lr: 0.002
+  factor: 0.7
+  patience: 100
+  truth_key: pid_signal
+  regime: []
+  mask_background: True
+  max_epochs: 5
+
+track_building_configs:
+  score_cut: 0.9
+  output_dir: /path/to/trackbuilding_processed/run_name
+
+evaluation_configs:
+  output_dir: /path/to/evaluation/run_name
+  min_pt: 0
+  max_eta: 4
+  min_track_length: 15
+  min_particle_length: 22
+  matching_fraction: 0.5
+  matching_style: two_way
+```
+
+---
+
+## Running the Pipeline
+
+> **Note:** Before running, update the hardcoded `project_root` variable at the top of each script to point to your local checkout of this repository.
+
+Each step is run from `Examples/QuirkTracking/Scripts/`, passing the config file as an argument:
+
+```bash
+cd Examples/QuirkTracking/Scripts/
+
+# Step 0: Preprocess raw event CSVs into a feature store
+python Step_0_dataset.py your_config.yaml
+
+# Step 1: Train metric learning (skip if using pre-trained weights)
+python Step_1_Train_Metric_Learning.py your_config.yaml
+
+# Step 2: Run embedding inference to build graphs
+python Step_2_Run_Metric_Learning.py your_config.yaml
+
+# Step 3: Train GNN (skip if using pre-trained weights)
+python Step_3_Train_GNN.py your_config.yaml
+
+# Step 4: Run GNN inference to score graph edges
+python Step_4_Run_GNN.py your_config.yaml
+
+# Step 5: Build track candidates from scored graphs
+python Step_5_Build_Track_Candidates.py your_config.yaml
+
+# Step 6: Evaluate reconstruction performance
+python Step_6_Evaluate_Reconstruction.py your_config.yaml
+```
+
+## Using Pre-trained Weights
+
+To use the included pre-trained weights, point `artifact_directory` in your config to this repo's `artifacts/` folder and set the run name to `Lambda500_pre_selection_quirk`:
+
+```yaml
+common_configs:
+  experiment_name: quirk
+  artifact_directory: /path/to/this/repo/artifacts/Lambda500_pre_selection_quirk
+```
+
+Then skip Steps 1 and 3 (training) and run Steps 2, 4, 5, and 6 for inference only.
+
+---
+
+## Pipeline Diagram
 
 <div align="center">
 <figure>
@@ -35,33 +195,8 @@ Once up and running, you may want to consider more complex ML [Models](https://h
 </figure>
 </div>
 
-## Install
+---
 
-Thank god that almost every package used in this library is available on conda and has known compatibility for both CPU and GPU (with CUDA v11.3). Therefore installation should be as simple as:
+## Credits
 
-**CPU-only installation**
-```
-conda env create -f cpu_environment.yml python=3.9
-conda activate exatrkx-cpu
-pip install -e .
-```
-
-Or, after ensuring your GPU drivers are [updated to run CUDA v11.3](https://docs.nvidia.com/cuda/cuda-installation-guide-linux/index.html):
-
-**GPU installation**
-```
-conda env create -f gpu_environment.yml python=3.9
-conda activate exatrkx-gpu
-pip install -e .
-```
-
-
-You should be ready for the [Quickstart](https://hsf-reco-and-software-triggers.github.io/Tracking-ML-Exa.TrkX/pipelines/quickstart)!
-
-### Vintage Errors
-
-A very possible error will be
-```
-OSError: libcudart.so.XX.X: cannot open shared object file: No such file or directory
-```
-This indicates a mismatch between CUDA versions. Identify the library that called the error, and ensure there are no versions of this library installed in parallel, e.g. from a previous `pip --user` install.
+Built on the [ExaTrkX Tracking-ML](https://github.com/HSF-reco-and-software-triggers/Tracking-ML-Exa.TrkX) framework by the Exa.TrkX Collaboration.

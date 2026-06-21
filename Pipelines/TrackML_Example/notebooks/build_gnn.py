@@ -8,7 +8,7 @@ from tqdm import tqdm
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
 class GNNInferenceBuilder:
-    def __init__(self, model, overwrite=None):
+    def __init__(self, model, overwrite=True):
         self.model = model
         self.output_dir = model.hparams["output_dir"]
         if overwrite is not None: 
@@ -44,7 +44,7 @@ class GNNInferenceBuilder:
                     if (
                         not os.path.exists(
                             os.path.join(
-                                self.output_dir, datatype, batch.event_file[-4:]
+                                self.output_dir, datatype, batch.event_file[-6:]
                             )
                         )
                     ) or self.overwrite:
@@ -64,6 +64,6 @@ class GNNInferenceBuilder:
     def save_downstream(self, batch, datatype):
 
         with open(
-            os.path.join(self.output_dir, datatype, batch.event_file[-4:]), "wb"
+            os.path.join(self.output_dir, datatype, batch.event_file[-6:]), "wb"
         ) as pickle_file:
             torch.save(batch, pickle_file)

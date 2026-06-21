@@ -13,9 +13,17 @@ import torch.nn as nn
 from tqdm import tqdm
 from tqdm.contrib.concurrent import process_map
 
-# # Set the project root directory
-# project_root = "/eos/home-l/lcondren/QuirkTracking-ML"
-# sys.path.append(project_root)
+FILENAME = os.getenv('FILENAME')
+TRAINSIZE = int(os.getenv('TRAINSIZE'))
+TESTSIZE = int(os.getenv('TESTSIZE'))
+
+# FILENAME="Schwarts_space_samples_signal_train_sm_and_signal_test"
+# TRAINSIZE = 40000
+# TESTSIZE = 4000
+
+# Set the project root directory
+project_root = "/global/homes/l/lcondren/pipeline_copy"
+sys.path.append(project_root)
 
 # Local imports
 sys.path.append("../../")
@@ -49,10 +57,12 @@ class QuirkFeatureStore(FeatureStoreBase):
     def prepare_data(self):
         # Find the input files
         all_files = os.listdir(self.input_dir)
+        print("all files length", len(all_files))
         all_events = sorted(
             np.unique([os.path.join(self.input_dir, event[:14]) for event in all_files])
         )[: int(self.n_files)]  #event000001000-particles0.csv [14]
-
+        print("length all events", len(all_events))
+        print("n_files", self.n_files)
         # Split the input files by number of tasks and select my chunk only
         #all_events = np.array_split(all_events, self.n_tasks)[self.task]
 
@@ -89,14 +99,14 @@ class QuirkFeatureStore(FeatureStoreBase):
         #print(all_events) 
         #print("all_files:")
         #print(all_files) 
-        process_map(process_func, all_events)
+        process_map(process_func, all_events, chunksize=1)
         #process_map(process_func, all_events, max_workers=self.n_workers)
 
 def main():
     hparams = {
-        "input_dir": "Examples/QuirkTracking/Scripts/Train_SM_test_mix_split_1500_500_FDim_2",
-        "output_dir": "Examples/QuirkTracking/Scripts/Tracks_output",
-        "n_files": "2000",
+        "input_dir": os.path.join("/pscratch/sd/l/lcondren/combined_hit_particle_files", FILENAME), #variable location 8
+        "output_dir": os.path.join("/pscratch/sd/l/lcondren/Tracks_output", FILENAME), #variable location 9
+        "n_files": str(TESTSIZE + TRAINSIZE), #variable location 10
         "n_tasks": "1",
         #"n_workers": "0",
         # Other hparams if needed

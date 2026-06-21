@@ -10,11 +10,18 @@ import logging
 logging.basicConfig(level=logging.INFO, format='%(levelname)s:%(message)s')
 import torch
 
+
+CONFIG = os.getenv('CONFIG', 'default_value4')
+
+
 # Set the project root directory
-project_root = "/eos/home-l/lcondren/QuirkTracking-ML"
+project_root = "/global/homes/l/lcondren/pipeline_copy"
 sys.path.append(project_root)
 
+
 sys.path.append("../../")
+
+
 
 from Pipelines.TrackML_Example.LightningModules.Embedding.Models.layerless_embedding import LayerlessEmbedding
 from utils.convenience_utils import headline, delete_directory
@@ -24,10 +31,10 @@ def parse_args():
     """Parse command line arguments."""
     parser = argparse.ArgumentParser("2_Run_Metric_Learning.py")
     add_arg = parser.add_argument
-    add_arg("config", nargs="?", default="pipeline_config.yaml")
+    add_arg("config", nargs="?", default=CONFIG)
     return parser.parse_args()
 
-def train(config_file="pipeline_config.yaml"):
+def train(config_file=CONFIG):
 
     logging.info(headline("Step 2: Constructing graphs from metric learning model"))
 

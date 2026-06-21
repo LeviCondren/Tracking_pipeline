@@ -17,6 +17,10 @@ output_notebook()
 from sklearn.metrics import roc_auc_score  
 from matplotlib import pyplot as plt
 
+# Set the project root directory
+project_root = "/global/homes/l/lcondren/pipeline_copy"
+sys.path.append(project_root)
+
 sys.path.append("../../")
 from Pipelines.TrackML_Example.LightningModules.Embedding.Models.layerless_embedding import LayerlessEmbedding
 

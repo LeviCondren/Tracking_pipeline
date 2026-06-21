@@ -1,4 +1,4 @@
-name: quirk-gpu
+name: pipeline_copy-gpu2
 
 channels:
     - rapidsai

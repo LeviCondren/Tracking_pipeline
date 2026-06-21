@@ -85,40 +85,43 @@ def get_modulewise_edges(hits):
     return true_edges
 
 
-def select_hits(truth, particles, endcaps=False, noise=False, min_pt=None):
+def select_hits(truth, particles, endcaps=False, noise=False, min_pt=None, max_layer_id=25):
     # Barrel volume and layer ids
-    vlids = [
-        (1),
-        (2),
-        (3),
-        (4),
-        (5),
-        (6),
-        (7),
-        (8),
-        (9),
-        (10),
-        (11),
-        (12),
-        (13),
-        (14),
-        (15),
-        (16),
-        (17),
-        (18),
-        (19),
-        (20),
-        (21),
-        (22),
-        (23),
-        (24),
-        (25)
-            ]
+    vlids = [(i) for i in range(1, max_layer_id+1)]
+    # vlids = [
+    #     (1),
+    #     (2),
+    #     (3),
+    #     (4),
+    #     (5),
+    #     (6),
+    #     (7),
+    #     (8),
+    #     (9),
+    #     (10),
+    #     (11),
+    #     (12),
+    #     (13),
+    #     (14),
+    #     (15),
+    #     (16),
+    #     (17),
+    #     (18),
+    #     (19),
+    #     (20),
+    #     (21),
+    #     (22),
+    #     (23),
+    #     (24),
+    #     (25)
+    #         ]
     n_det_layers = len(vlids)
     # Select barrel layers and assign convenient layer number [0-25]
     vlid_groups = truth.groupby(["layer_id"])
+
+    valid_vlids = [i for i in vlids if i in vlid_groups.groups]
     truth = pd.concat(
-        [vlid_groups.get_group(vlids[i]).assign(layer=i) for i in range(n_det_layers)]
+        [vlid_groups.get_group(vlids[i]).assign(layer=i) for i, vlid in enumerate(valid_vlids)]
     )
 
     if noise:
@@ -159,8 +162,8 @@ def build_event(
     hits_file = event_file + "-hits.csv"
     particles_file = event_file + "-particles.csv"
     truth, particles = pd.read_csv(hits_file), pd.read_csv(particles_file)
-
-    truth = select_hits(truth, particles, endcaps=endcaps, noise=noise, min_pt=min_pt).assign(
+    max_layer_id = truth['layer_id'].max()
+    truth = select_hits(truth, particles, endcaps=endcaps, noise=noise, min_pt=min_pt, max_layer_id=max_layer_id).assign(
         evtid=int(event_file[-9:])
     )
 
@@ -204,7 +207,7 @@ def prepare_event(
     noise=False,
     min_pt=0.,
     cell_information=False,
-    overwrite=False,
+    overwrite=True,
     **kwargs
 ):
     try:
@@ -245,7 +248,7 @@ def prepare_event(
                 hid=torch.from_numpy(hid),
                 pt=torch.from_numpy(pt),
             )
-            print(data)
+            #print(data)
             if modulewise_true_edges is not None:
                 data.modulewise_true_edges = torch.from_numpy(modulewise_true_edges)
             if layerwise_true_edges is not None:
@@ -259,4 +262,4 @@ def prepare_event(
         else:
             logging.info("{} already exists".format(evtid))
     except Exception as inst:
-        print("File:", event_file, "had exception", inst)
+        print("File:", event_file, "had oopsie", inst)

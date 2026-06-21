@@ -11,7 +11,7 @@ import pandas as pd
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
 class EmbeddingInferenceBuilder:
-    def __init__(self, model, split = [80, 10, 10], overwrite=False, knn_max = 1000, radius = 0.1):
+    def __init__(self, model, split = [80, 10, 10], overwrite=True, knn_max = 1000, radius = 0.1):
         
         self.model = model
         self.output_dir = self.model.hparams["output_dir"]
@@ -25,7 +25,7 @@ class EmbeddingInferenceBuilder:
         model.hparams["train_split"] = single_file_split
         model.setup(stage="fit")
         self.performance_df = pd.DataFrame(columns=["sample", "loss", "purity", "efficiency"])
-        
+        print("split", self.split)
 
     def build(self):
         print("Training finished, running inference to build graphs...")
@@ -61,8 +61,14 @@ class EmbeddingInferenceBuilder:
         ]
 
         all_events = os.listdir(self.model.hparams["input_dir"])
+        all_events = sorted(all_events, key=lambda x: int(x[-9:]))
+        print("Total events available:", len(all_events))
+        print("input dir",self.model.hparams["input_dir"])
+        #print("all events",all_events)
         #random.shuffle(all_events)
         self.dataset_list = np.split(np.array(all_events), np.cumsum(self.split))
+        print("Dataset list lengths:", [len(ds) for ds in self.dataset_list])
+        #print("dataset list",self.dataset_list)
         
         # By default, the set of examples propagated through the pipeline will be train+val+test set
         datasets = {
@@ -126,7 +132,7 @@ class EmbeddingInferenceBuilder:
     def save_downstream(self, batch, datatype):
 
         with open(
-            os.path.join(self.output_dir, datatype, batch.event_file[-4:]), "wb"
+            os.path.join(self.output_dir, datatype, batch.event_file[-6:]), "wb"
         ) as pickle_file:
             torch.save(batch, pickle_file)
             
