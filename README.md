@@ -1,8 +1,8 @@
 <div align="center">
 
-# Quirk Tracking Pipeline
+# Tracking Pipeline
 
-A machine-learning track reconstruction pipeline for long-lived exotic particles ("quirks") at the LHC, built on the [ExaTrkX](https://github.com/HSF-reco-and-software-triggers/Tracking-ML-Exa.TrkX) framework.
+A machine-learning track reconstruction pipeline for long-lived exotic particles with non-helical tracks at the LHC, built on the [ExaTrkX](https://github.com/HSF-reco-and-software-triggers/Tracking-ML-Exa.TrkX) framework.
 
 </div>
 
